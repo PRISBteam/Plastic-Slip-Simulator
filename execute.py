@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 14:40 2022
 
-Last edited on: 07/06/2022 16:20
+Last edited on: 08/06/2022 17:10
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -280,15 +280,29 @@ def main():
                                                                  v2f = volumes_as_faces,
                                                                  f2e = faces_as_edges)
             
-        dcc.io.write_to_file('result.txt',
-                             node_degrees, 'node_degrees',
-                             adjacency_matrices[0], 'A0',
-                             adjacency_matrices[1], 'A1',
-                             adjacency_matrices[2], 'A2',
-                             adjacency_matrices[3], 'A3',
-                             incidence_matrices[1], 'B1',
-                             incidence_matrices[2], 'B2',
-                             incidence_matrices[3], 'B3')
+        if degree_yes:
+            
+            dcc.io.write_to_file('result.txt',
+                                 node_degrees, 'node_degrees',
+                                 adjacency_matrices[0], 'A0',
+                                 adjacency_matrices[1], 'A1',
+                                 adjacency_matrices[2], 'A2',
+                                 adjacency_matrices[3], 'A3',
+                                 incidence_matrices[1], 'B10',
+                                 incidence_matrices[2], 'B21',
+                                 incidence_matrices[3], 'B32')
+        
+        else:
+            
+            dcc.io.write_to_file('result.txt',
+                     adjacency_matrices[0], 'A0',
+                     adjacency_matrices[1], 'A1',
+                     adjacency_matrices[2], 'A2',
+                     adjacency_matrices[3], 'A3',
+                     incidence_matrices[1], 'B10',
+                     incidence_matrices[2], 'B21',
+                     incidence_matrices[3], 'B32')
+
     
     except:
         "/nSomething went wrong with the function DCC_Structure.execute.main()."
