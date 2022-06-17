@@ -1,10 +1,11 @@
 # DCC_Slip_Structure_Generator
 
-The package DCC_Structure contains Python modules to build a discrete cell complex (DCC) based on the slip planes of crystal nanostructures (simple cubic, FCC, BCC; HCP not yet available). The script execute.py is a summarised execution of the whole package. It takes as input:
+The package DCC_Structure contains Python modules to build a discrete cell complex (DCC) based on the slip planes of crystal nanostructures (simple cubic, FCC, BCC; HCP not yet available). The script **execute.py** is a summarised execution of the whole package. It takes as input:
 - the dimension of the complex: 2 or 3. The code should work fine for 2 dimensions but this has not been thoroughly tested;
 - the desired structure: simple cubic, fcc, bcc, or hcp (not yet available);
-- the number of unit cells in each direction: X Y Z. Here, a 'unit cell' is a volume bounded by 8 simple cubic-like vertices, and it is the division of this unit cell (or not, for simple cubic) into particular combinations of tetrahedra that makes the specified structure. For example, a bcc unit cell in this case has 24 tetrahedral 3-cells; and
-- the lattice basis vectors: [a1, a2, a3] [b1, b2, b3] [c1, c2, c3]. These are the vectors between corners of the unit cell as explained above. A complex with non-orthogonal basis vectors has not been tested.
+- the number of unit cells in each direction: X Y Z. Here, a 'unit cell' is a volume bounded by 8 simple cubic-like vertices, and it is the division of this unit cell (or not, for simple cubic) into particular combinations of tetrahedra that makes the specified structure. For example, a bcc unit cell in this case has 24 tetrahedral 3-cells;
+- the lattice basis vectors: [a1, a2, a3] [b1, b2, b3] [c1, c2, c3]. These are the vectors between corners of the unit cell as explained above. A complex with non-orthogonal basis vectors has not been tested; and
+- whether or not to also output the node degree matrix.
 
 ## Modules
 
@@ -30,4 +31,4 @@ This module contains a (non-optimised and not as-of-yet user-friendly) function 
 
 ### execute.py
 
---
+See above.
