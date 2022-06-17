@@ -71,7 +71,7 @@ def main():
     parser.add_argument(
         '-d',
         action='store_true',
-        required=True,
+        required=False,
         help="Whether to also output the node degree matrix."
     )    
     
