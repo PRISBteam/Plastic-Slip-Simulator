@@ -83,7 +83,7 @@ def main():
     STRUC = args.struc
     SIZE = args.size
     LATTICE = np.array(args.basisv)
-    degree_yes = args.degrees
+    degree_yes = args.d
 
     SIZE = np.array([[1,0,0],[0,1,0],[0,0,1]]) ################
 
