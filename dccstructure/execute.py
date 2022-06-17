@@ -64,7 +64,7 @@ def main():
         nargs=3, # or 9?
         default=[[1,0,0],[0,1,0],[0,0,1]],
         type=list, # or int?
-        required=True,
+        required=False,
         help="The basis vectors of the complex's lattice (vectors between nodes in each spatial direction)."
     )
     
