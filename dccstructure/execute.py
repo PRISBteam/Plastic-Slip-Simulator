@@ -87,6 +87,8 @@ def main():
         LATTICE = np.array(args.basisv)
         degree_yes = args.degrees
 
+        SIZE = np.array([[1,0,0],[0,1,0],[0,0,1]]) ################
+        
         first_u_cell = np.array([[0,0,0]]) + np.sum(LATTICE, axis=0) / 2
 
 
