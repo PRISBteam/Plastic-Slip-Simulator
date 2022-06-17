@@ -34,12 +34,12 @@ def main():
         default=3,
         type=int,
         choices=[2, 3],
-        required=False,
+        required=True,
         help='The spatial dimension of the complex (2 or 3).'
     )
 
     parser.add_argument(
-        '-size',
+        '--size',
         action='store',
         nargs=3,
         default=[1,1,1],
@@ -50,7 +50,7 @@ def main():
     )
 
     parser.add_argument(
-        '-struc',
+        '--struc',
         action='store',
         default='bcc',
         choices=['simple cubic', 'bcc', 'fcc', 'hcp'],
@@ -64,17 +64,14 @@ def main():
         nargs=3, # or 9?
         default=[[1,0,0],[0,1,0],[0,0,1]],
         type=list, # or int?
-        required=False,
+        required=True,
         help="The basis vectors of the complex's lattice (vectors between nodes in each spatial direction)."
     )
     
     parser.add_argument(
-        '--degrees',
+        '-d',
         action='store_true',
-        #default=False,
-        #type=bool,
-        #choices=[True, False],
-        required=False,
+        required=True,
         help="Whether to also output the node degree matrix."
     )    
     
@@ -307,7 +304,7 @@ def main():
 
         
     except:
-       print("\nSomething went wrong with the function DCC_Structure.execute.main().")
+       print("\nSomething went wrong with the function dccstructure.execute.main().")
 
 
 if __name__ == "__main__":
