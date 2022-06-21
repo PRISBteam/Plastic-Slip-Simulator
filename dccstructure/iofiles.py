@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 07/06/2022 14:50
+Last edited on: 21/06/2022 18:40
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -21,7 +21,7 @@ import numpy as np
 # ----- # ----- # FUNCTIONS # ------ # ----- #
 
 
-def write_to_file(file, *args):
+def write_to_file(*args, results=False):
     """
     Parameters
     ----------
@@ -37,46 +37,49 @@ def write_to_file(file, *args):
     Several .txt files with the input *args written on them.
     """
     
-    # This function will create one .txt file with the *args cleanly presented on it, easy for a human to read, as well as other
-    # files, with the *args more messily printed on them, but such that they are easier to read with another Python script, for example.
+    # This function will create one .txt file with the *args cleanly presented on it, easy for a human to read (if passed results=True),
+    # as well as other files, with the *args more messily printed on them, but such that they are easier to read with another
+    # Python script, for example.
     
     # First file.
     
-    with open(file, 'w') as f1:
-            
-        for i in range(0, len(args)):
-            
-            # The point of the *args is that each i%2 == 0 is some variable np.array and each i%2 == 1 is a str, detailing the
-            # name of the preceding variable.
-
-            if i %2 == 0:
+    if results == True:
+    
+        with open('results.txt', 'w') as f1:
                 
-                for row in args[i]:
+            for i in range(0, len(args)):
+                
+                # The point of the *args is that each i%2 == 0 is some variable np.array and each i%2 == 1 is a str, detailing the
+                # name of the preceding variable.
+    
+                if i %2 == 0:
                     
-                    if np.all(row == args[i][0]): # first line
+                    for row in args[i]:
                         
-                        f1.write(str(args[i + 1]) + ' = np.array([' + str(row) + ',\n')
-                                                                    
-                    elif np.all(row == args[i][-1]): # last line
-                        
-                        f1.write(' ' * (len(args[i + 1]) + 13) + str(row) + '])\n\n')
-                        
-                    else:
-                        
-                        f1.write(' ' * (len(args[i + 1]) + 13) + str(row) + ',\n')
-                        
-            else:
-                pass
+                        if np.all(row == args[i][0]): # first line
+                            
+                            f1.write(str(args[i + 1]) + ' = np.array([' + str(row) + ',\n')
+                                                                        
+                        elif np.all(row == args[i][-1]): # last line
+                            
+                            f1.write(' ' * (len(args[i + 1]) + 13) + str(row) + '])\n\n')
+                            
+                        else:
+                            
+                            f1.write(' ' * (len(args[i + 1]) + 13) + str(row) + ',\n')
+                            
+                else:
+                    pass
             
     # Other files.
     
-        for i in range(0, len(args)):
-            
-            # The point of the *args is that each i%2 == 0 is some variable np.array and each i%2 == 1 is a str, detailing the
-            # name of the preceding variable.
+    for i in range(0, len(args)):
+        
+        # The point of the *args is that each i%2 == 0 is some variable np.array and each i%2 == 1 is a str, detailing the
+        # name of the preceding variable.
 
-            if i %2 == 0:
-                
-                file_name = args[i+1] + '.txt'
-                
-                np.savetxt(file_name, args[i], fmt = '%i', delimiter = ',', header = args[i+1].upper(), comments = '# ')
+        if i %2 == 0:
+            
+            file_name = args[i+1] + '.txt'
+            
+            np.savetxt(file_name, args[i], fmt = '%i', delimiter = ' ', header = args[i+1].upper(), comments = '# ')

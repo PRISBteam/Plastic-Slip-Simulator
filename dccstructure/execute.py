@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 14:40 2022
 
-Last edited on: 21/06/2022 18:10
+Last edited on: 21/06/2022 18:45
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -15,6 +15,7 @@ import numpy as np
 import build
 import matrices
 import orientations
+from geometry import unit_normal
 from iofiles import write_to_file
 
 # https://docs.python.org/3/library/argparse.html
@@ -72,7 +73,21 @@ def main():
         action = 'store_true',
         required = False,
         help = "Whether to also output the node degree matrix."
-    )    
+    )
+    
+    parser.add_argument(
+        '-n',
+        action = 'store_true',
+        required = False,
+        help = "Whether to also output the unit normal vectors to the 2-cells."
+    )
+    
+    parser.add_argument(
+        '-r',
+        action = 'store_true',
+        required = False,
+        help = "Whether to also output the 'results.txt' file from iofiles.write_to_file()."
+    )
     
     # Execute the complex
         
@@ -81,7 +96,9 @@ def main():
     DIM = args.dim
     STRUC = args.struc
     SIZE = args.size
-    degree_yes = args.d
+    degrees_yes = args.d
+    normals_yes = args.n
+    results_yes = args.r
     
     try:
         
@@ -114,9 +131,6 @@ def main():
         #------- EDGES in SC
 
         edges = build.find_neighbours(nodes, LATTICE, structure = STRUC, dim=DIM)
-
-        if degree_yes:
-            node_degrees = matrices.degree_distribution(edges, nodes)
 
         #------- FACES in SC
 
@@ -181,9 +195,6 @@ def main():
                                                                                                 nodes[nodes_bcc],
                                                                                                 nodes[nodes_virtual]))
 
-        if degree_yes:
-            node_degrees = matrices.degree_distribution(edges, nodes)
-
         #------- FACES in BCC
 
         faces, faces_sc = build.create_faces(edges, structure = STRUC, cells_0D = nodes)
@@ -243,10 +254,6 @@ def main():
                                                                                                 dim = DIM,
                                                                                                 special_0D = (nodes_sc, nodes_bcc, nodes_fcc))
 
-        if degree_yes:
-            node_degrees = matrices.degree_distribution(edges, nodes)
-
-
         #------- FACES in FCC
 
         faces, faces_slip = build.create_faces(edges,
@@ -288,29 +295,38 @@ def main():
                                                                 v2f = volumes_as_faces,
                                                                 f2e = faces_as_edges)
 
-    if degree_yes:
+    if results_yes:
 
-        write_to_file('result.txt',
-                                node_degrees, 'node_degrees',
-                                adjacency_matrices[0], 'A0',
-                                adjacency_matrices[1], 'A1',
-                                adjacency_matrices[2], 'A2',
-                                adjacency_matrices[3], 'A3',
-                                incidence_matrices[1], 'B10',
-                                incidence_matrices[2], 'B21',
-                                incidence_matrices[3], 'B32')
+        write_to_file(adjacency_matrices[0], 'A0',
+                      adjacency_matrices[1], 'A1',
+                      adjacency_matrices[2], 'A2',
+                      adjacency_matrices[3], 'A3',
+                      incidence_matrices[1], 'B10',
+                      incidence_matrices[2], 'B21',
+                      incidence_matrices[3], 'B32',
+                      results = results_yes)
 
     else:
 
-        write_to_file('result.txt',
-                    adjacency_matrices[0], 'A0',
-                    adjacency_matrices[1], 'A1',
-                    adjacency_matrices[2], 'A2',
-                    adjacency_matrices[3], 'A3',
-                    incidence_matrices[1], 'B10',
-                    incidence_matrices[2], 'B21',
-                    incidence_matrices[3], 'B32')
-
+        write_to_file(adjacency_matrices[0], 'A0',
+                      adjacency_matrices[1], 'A1',
+                      adjacency_matrices[2], 'A2',
+                      adjacency_matrices[3], 'A3',
+                      incidence_matrices[1], 'B10',
+                      incidence_matrices[2], 'B21',
+                      incidence_matrices[3], 'B32')
+        
+    if degrees_yes:
+        
+        node_degrees = matrices.degree_distribution(edges, nodes)
+        
+        write_to_file(node_degrees, 'node_degrees')
+        
+    if normals_yes:
+        
+        normals = np.array([unit_normal(i) for i in nodes[faces]])
+        
+        write_to_file(normals, 'normals')
 
 
 if __name__ == "__main__":
