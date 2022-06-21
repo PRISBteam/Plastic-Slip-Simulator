@@ -21,6 +21,14 @@ This module contains functions that gauge orientations on 1- and 2-cells and est
 
 This module contains functions that compute the node degree distribution and topologically-relevant matrices such as adjacency matrices, oriented incidence matrices, and other matrices which relate 3-cells to 1-cells. Matrices between p-cells and 0-cells (p = 1,2,3) are encoded into the definitions of the volumes, faces and edges as given by the functions in build.py.
 
+### geometry.py
+
+This module contains functions which define geometric quantities such as normal vectors, areas, volumes, angles and steradian angles, useful for the functions defined in operations.py
+
+### operations.py
+
+This module contains functions which define metric operations (and related quantities) on the complex, such as node weights, the metric tensor, an inner product and a star operator.
+
 ### io.py
 
 This module contains a useful function for automating outputs of matrices and other variables.
@@ -32,3 +40,7 @@ This module contains a (non-optimised and not as-of-yet user-friendly) function 
 ### execute.py
 
 See above.
+
+### build_complex.py
+
+This module only has one function, also called build_complex(), which is similar to execute.py, but while execute.py focuses on the topology of the complex, build_complex returns the nodes, edges, faces and volumes, as well as the incidence and adjacency matrices.
