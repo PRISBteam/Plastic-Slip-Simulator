@@ -2,24 +2,23 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 07/06/2022 14:50
+Last edited on: 20/06/2022 17:00
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
-This module is part of the DCC_Structure package. In here you will find functions that compute an unoriented version of the incidence
+This module is part of the dccstructure package. In here you will find functions that compute an unoriented version of the incidence
 matrices, as well as a function which uses that to compute the relative orientation between volumes and faces and between faces
 and edges.
 
 """
 
 
-# ----- #----- #  IMPORTS # ----- # ----- #
+# ----- # ----- #  IMPORTS # ----- # ----- #
 
 
 import numpy as np
 from itertools import combinations # to avoid nested for loops
 from build import find_equal_rows
-from iofiles import write_to_file
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #

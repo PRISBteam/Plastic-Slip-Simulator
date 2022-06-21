@@ -2,17 +2,17 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 07/06/2022 14:50
+Last edited on: 21/06/2022 11:15
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
-This module is part of the DCC_Structure package. In here you will find functions that find the degree node distribution, incidence
+This module is part of the dccstructure package. In here you will find functions that find the degree node distribution, incidence
 matrices, adjacency matrices, and other combinatorial forms, given a cell complex.
 
 """
 
 
-# ----- #----- #  IMPORTS # ----- # ----- #
+# ----- # ----- #  IMPORTS # ----- # ----- #
 
 
 import numpy as np
@@ -20,7 +20,6 @@ from itertools import combinations # to avoid nested for loops
 from scipy import sparse
 from build import find_equal_rows
 import orientations as dcco
-from iofiles import write_to_file
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #
@@ -422,3 +421,39 @@ def combinatorial_form(structure, degree, cells_3D, cells_2D, cells_1D, cells_0D
         return combinatorial_form
     
     except: print("Something went wrong with the function combinatorial_form().")
+
+
+
+    
+def convert_to_cscmatrix(array):
+    """
+    Parameters
+    ----------
+    array : np array (N x 3)
+        An array whose columns list the row, column and value entries of a sparse matrix.
+
+    Returns
+    -------
+    The sparse matrix defined by 'array' but in sparse.csc_matrix format.
+    """
+    
+    sparse_m = sparse.csc_matrix((array[:,2], (array[:,0], array[:,1])), shape = (np.max(array[:,0])+1, np.max(array[:,1])+1))
+    
+    return sparse_m
+
+
+
+
+def convert_from_cscmatrix(matrix):
+    """
+    Parameters
+    ----------
+    matrix : sparse.csc_matrix
+        A sparse matrix.
+
+    Returns
+    -------
+    The same sparse matrix but with row, column and value entries laid out in a np array (N x 3).
+    """
+
+

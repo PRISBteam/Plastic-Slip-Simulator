@@ -2,23 +2,21 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 07/06/2022 14:50
+Last edited on: 21/06/2022 12:00
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
-This module is part of the DCC_Structure package. In here you will find functions pertinent to the construction of the cell complex.
+This module is part of the dccstructure package. In here you will find functions pertinent to the construction of the cell complex.
 
 """
 
 
-# ----- #----- #  IMPORTS # ----- # ----- #
+# ----- # ----- #  IMPORTS # ----- # ----- #
 
 
 import numpy as np
 from scipy.spatial.distance import cdist
 from itertools import combinations # to avoid nested for loops
-from iofiles import write_to_file
-
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #
@@ -1263,3 +1261,6 @@ def create_volumes(lattice, structure, cells_0D=None, cells_2D=None):
     except:
         
         print("\nSomething went wrong with the function create_volumes().\n")
+
+
+
