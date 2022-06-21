@@ -1,4 +1,4 @@
-# DCC_Slip_Structure_Generator
+# DCC_Structure_Generator
 
 The package DCC_Structure contains Python modules to build a discrete cell complex (DCC) based on the slip planes of crystal nanostructures (simple cubic, FCC, BCC; HCP not yet available). The script **execute.py** is a summarised execution of the whole package. It takes as input:
 - the dimension of the complex: 2 or 3. The code should work fine for 2 dimensions but this has not been thoroughly tested;
