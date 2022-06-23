@@ -2,7 +2,7 @@
 """
 Created on Mon Jun 20 16:27 2022
 
-Last edited on: 21/06/2022 18:00
+Last edited on: 23/06/2022 11:00
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -52,7 +52,7 @@ def node_weight(node, cells_3D, cells_0D):
 
 
 
-def metric_tensor(cell, cells_3D, cells_0D):
+def metric_tensor(cell, cells_3D, cells_0D, compl='simplicial'):
     """
     Parameters
     ----------
@@ -62,6 +62,9 @@ def metric_tensor(cell, cells_3D, cells_0D):
         An array whose rows list the indices of nodes which make up one 3-cell.
     cells_0D: np array (N x 3)
         A numpy array whose rows list the spatial coordinates of points.
+    compl: str, optional
+        The type of complex. Supported options are 'simplicial' (default) and 'quasi-cubical'.
+
 
     Returns
     -------
@@ -70,9 +73,19 @@ def metric_tensor(cell, cells_3D, cells_0D):
     """
     
     chain = np.zeros((np.shape(cells_0D)[0], 1))
-        
-    denominator = np.shape(cell)[0] * (geometry.geo_measure(cells_0D[cell])) ** 2
     
+    if compl == 'simplicial':
+        
+        denominator = np.shape(cell)[0] * (geometry.geo_measure(cells_0D[cell])) ** 2
+        
+    elif compl == 'quasi-cubical':
+        
+        denominator = 2 ** (np.shape(cell)[0] - 1) * (geometry.geo_measure(cells_0D[cell])) ** 2
+        
+    elif compl not in ['simplicial', 'quasi-cubical']:
+        
+        print("\nWhen calling the function operations.inner_product(), the 'compl' argument must be set to either 'simplicial' (default) or 'quasi-cubical'.\n")
+            
     for node in cell:
         
         chain[node] = node_weight(node, cells_3D, cells_0D)
@@ -82,7 +95,7 @@ def metric_tensor(cell, cells_3D, cells_0D):
 
 
 
-def inner_product(cell, cells_3D, cells_0D, dim=3):
+def inner_product(cell, cells_3D, cells_0D, dim=3, compl='simplicial'):
     """
     Parameters
     ----------
@@ -94,6 +107,8 @@ def inner_product(cell, cells_3D, cells_0D, dim=3):
         A numpy array whose rows list the spatial coordinates of points.
     dim : int, optional
         The physical dimension of the complex. The default is 3.
+    compl: str, optional
+        The type of complex. Supported options are 'simplicial' (default) and 'quasi-cubical'.
 
     Returns
     -------
@@ -111,14 +126,141 @@ def inner_product(cell, cells_3D, cells_0D, dim=3):
         
         numerator += node_weight(node, cells_3D, cells_0D) * np.sum([geometry.geo_measure(cells_0D[i]) for i in incident_vols])
     
-    denominator = np.shape(cell)[0] * (dim + 1) * (geometry.geo_measure(cells_0D[cell])) ** 2
+    if compl == 'simplicial':
+        
+        denominator = np.shape(cell)[0] * (dim + 1) * (geometry.geo_measure(cells_0D[cell])) ** 2
+        
+    elif compl == 'quasi-cubical':
+        
+        denominator = 2 ** (np.shape(cell)[0] - 1 + dim) * (geometry.geo_measure(cells_0D[cell])) ** 2
+        
+    elif compl not in ['simplicial', 'quasi-cubical']:
+        
+        print("\nWhen calling the function operations.inner_product(), the 'compl' argument must be set to either 'simplicial' (default) or 'quasi-cubical'.\n")
     
     return numerator / denominator
 
 
 
+def adj_coboundary(cell, cells_3D, cells_2D, cells_1D, cells_0D, v2f, f2e, e2n, dim=3):
+    """
+    Parameters
+    ----------
+    cell : list OR np array
+        A listing of the indices of the constituent nodes of a p-cell in the complex.
+    cells_3D : np array
+        An array whose rows list the indices of nodes which make up one 3-cell.
+    cells_2D : np array
+        An array whose rows list the indices of nodes which make up one face.
+    cells_1D : np array
+        An array whose rows list the indices of nodes which make up one edge.
+    cells_0D : np array (N x 3)
+        A numpy array whose rows list the spatial coordinates of points.
+    v2f : np array
+        An array whose rows list the indices of faces which make up one volume, with considerations for relative orientation.
+    f2e : np array
+        An array whose rows list the indices of edges which make up one face, with considerations for relative orientation.
+    e2n : np array
+        An array whose rows list the indices of nodes which make up one edge, with considerations for relative orientation.
+    dim : int, optional
+        The physical dimension of the complex. The default is 3.
 
-def star():
+    Returns
+    -------
+    adjcobnd : np array
+        A column vector representing the adjoint coboundary of 'cell' as a cochain. Based on Equation (14) of Berbatov, K., et al.
+        (2022). "Diffusion in multi-dimensional solids using Forman's combinatorial differential forms". App Math Mod 110, pp. 172-192.
+        
+    
+    """
+    
+    # First we need to ensure that 'cell' is a column vector
+    
+    if type(cell) == list:
+        
+        cell = np.array(cell).reshape(3,1)
+        
+    if np.shape(cell)[1] != 1:
+        
+        cell.reshape(len(cell),1)
+        
+    # Now we find the adjoint coboundary of 'cell' for each type of p-cell
+        
+    p = len(cell)
+    
+    prod = inner_product(cell, cells_3D, cells_0D)
+    
+    if p == 3:
+        
+        adjcobnd = 0
+        
+    elif p == 2:
+        
+        adjcobnd = v2f * cell
+        
+        nz_entries = np.argwhere(adjcobnd)[:,0] # identify the non-zero entries of adjcobnd - these will be the indices of the
+                                                # (p-1)-cells on the boundary of 'cell'
+        
+        for i in nz_entries:
+            
+            adjcobnd[i] *= prod / inner_product(cells_3D[i], cells_3D, cells_0D)
+        
+    elif p == 1:
+        
+        adjcobnd = f2e * cell
+        
+        nz_entries = np.argwhere(adjcobnd)[:,0] # identify the non-zero entries of adjcobnd - these will be the indices of the
+                                                # (p-1)-cells on the boundary of 'cell'
+        
+        for i in nz_entries:
+            
+            adjcobnd[i] *= prod / inner_product(cells_2D[i], cells_3D, cells_0D)
+        
+    elif p == 0:
+        
+        adjcobnd = e2n * cell
+        
+        nz_entries = np.argwhere(adjcobnd)[:,0] # identify the non-zero entries of adjcobnd - these will be the indices of the
+                                                # (p-1)-cells on the boundary of 'cell'
+        
+        for i in nz_entries:
+            
+            adjcobnd[i] *= prod / inner_product(cells_1D[i], cells_3D, cells_0D)
+            
+    return adjcobnd
+        
+
+
+def star(cell, cells_3D, cells_2D, cells_1D, cells_0D, v2f, f2e, e2n, dim=3, compl='simplicial'):
+    """
+    Parameters
+    ----------
+    cell : list OR np array
+        A listing of the indices of the constituent nodes of a p-cell in the complex.
+    cells_3D : np array
+        An array whose rows list the indices of nodes which make up one 3-cell.
+    cells_2D : np array
+        An array whose rows list the indices of nodes which make up one face.
+    cells_1D : np array
+        An array whose rows list the indices of nodes which make up one edge.
+    cells_0D : np array (N x 3)
+        A numpy array whose rows list the spatial coordinates of points.
+    v2f : np array
+        An array whose rows list the indices of faces which make up one volume, with considerations for relative orientation.
+    f2e : np array
+        An array whose rows list the indices of edges which make up one face, with considerations for relative orientation.
+    e2n : np array
+        An array whose rows list the indices of nodes which make up one edge, with considerations for relative orientation.
+    dim : int, optional
+        The physical dimension of the complex. The default is 3.
+    compl: str, optional
+        The type of complex. Supported options are 'simplicial' (default) and 'quasi-cubical'.
+
+    Returns
+    -------
+    int
+        DESCRIPTION.
+    """
     
     return 1
     
