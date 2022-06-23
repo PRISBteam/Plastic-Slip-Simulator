@@ -29,7 +29,7 @@ This module contains functions which define geometric quantities such as normal 
 
 ### operations.py
 
-This module contains functions which define metric operations (and related quantities) on the complex, such as node weights, the metric tensor, an inner product and a star operator.
+This module contains functions which define metric operations (and related quantities) on the complex, such as node weights, the metric tensor, an inner product, an adjoint coboundary oeprator and a star operator.
 
 ### io.py
 
