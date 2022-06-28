@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 28/06/2022 16:22
+Last edited on: 28/06/2022 19:40
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -84,7 +84,11 @@ def write_to_file(*args, results=False):
             
             ft = '%i'
                 
-            if type(args[i][0,0]) == np.float64:
+            if type(args[i]) == np.ndarray and len(np.shape(args[i])) and type(args[i][0,0]) == np.float64:
+                
+                ft = '%1.8f'
+            
+            if type(args[i]) == list and type(args[i][0]) == float:
                 
                 ft = '%1.8f'
             
