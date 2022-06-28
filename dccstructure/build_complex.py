@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 21 12:00 2022
 
-Last edited on: 28/06/2022 19:05
+Last edited on: 28/06/2022 20:12
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -88,7 +88,14 @@ def bc_main():
         required = False,
         help = "Whether to also output the unit normal vectors to the 2-cells."
     )
-    
+
+    parser.add_argument(
+        '-a',
+        action = 'store_true',
+        required = False,
+        help = "Whether to also output the areas of 2-cells."
+    )
+
     parser.add_argument(
         '-s',
         action = 'store_true',
@@ -113,6 +120,7 @@ def bc_main():
     degrees_yes = args.d
     normals_yes = args.n
     results_yes = args.r
+    areas_yes = arsg.a
     slip_yes = args.s
     
     try:
@@ -203,13 +211,13 @@ def bc_main():
         
         #------- EDGES in BCC
         
-        edges, (edges_sc, edges_bcc, edges_virtual) = build.find_neighbours(nodes,
-                                                                            LATTICE,
-                                                                            structure = STRUC,
-                                                                            dim=DIM,
-                                                                            special_0D = (nodes[nodes_sc],
-                                                                                          nodes[nodes_bcc],
-                                                                                          nodes[nodes_virtual]))
+        edges, edges_sc, edges_bcc, edges_virtual = build.find_neighbours(nodes,
+                                                                          LATTICE,
+                                                                          structure = STRUC,
+                                                                          dim=DIM,
+                                                                          special_0D = (nodes[nodes_sc],
+                                                                                        nodes[nodes_bcc],
+                                                                                        nodes[nodes_virtual]))
                                 
         #------- FACES in BCC
         
@@ -217,7 +225,7 @@ def bc_main():
         
         faces_slip = np.array(list(range(len(faces))))
         
-        faces_slip = np.delete(faces_slip, faces_sc)
+        faces_slip = list(np.delete(faces_slip, faces_sc))
         
         faces_as_edges = orientations.faces_to_edges(faces, edges)
                     
@@ -328,17 +336,23 @@ def bc_main():
         
         node_degrees = matrices.degree_distribution(edges, nodes)
         
-        write_to_file(node_degrees, 'node_degrees')
+        write_to_file(node_degrees, 'node_degrees', new_folder = False)
         
     if normals_yes:
         
         normals = np.array([unit_normal(i) for i in nodes[faces]])
         
-        write_to_file(normals, 'normals')
+        write_to_file(normals, 'normals', new_folder = False)
+        
+    if areas_yes:
+        
+        areas = [geo_measure(i) for i in nodes[faces]]
+        
+        write_to_file(areas, 'faces_areas', new_folder = False)
 
     if slip_yes:
         
-        write_to_file(faces_slip, 'faces_slip')
+        write_to_file(faces_slip, 'faces_slip', new_folder = False)
         
     
 
@@ -465,7 +479,7 @@ nodes, edges, faces, faces_slip, volumes, adjacency_matrices, incidence_matrices
         
         faces_slip = np.array(list(range(len(faces))))
         
-        faces_slip = np.delete(faces_slip, faces_sc)
+        faces_slip = list(np.delete(faces_slip, faces_sc))
         
         faces_as_edges = orientations.faces_to_edges(faces, edges)
                     

@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 21/06/2022 12:00
+Last edited on: 28/06/2022 20:12
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -708,7 +708,7 @@ def find_neighbours(cells_0D, lattice, structure, dim, special_0D=None):
                         
                         virtual_neighbours.append(i)
                     
-                return neighbours, (sc_neighbours, bcc_neighbours, virtual_neighbours)
+                return neighbours, sc_neighbours, bcc_neighbours, virtual_neighbours
     
         ##----- FCC -----##
     

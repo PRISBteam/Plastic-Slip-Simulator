@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 28/06/2022 19:40
+Last edited on: 28/06/2022 20:06
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -16,12 +16,13 @@ files in one go.
 
 
 import numpy as np
+import os
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #
 
 
-def write_to_file(*args, results=False):
+def write_to_file(*args, new_folder = True, results=False):
     """
     Parameters
     ----------
@@ -41,6 +42,18 @@ def write_to_file(*args, results=False):
     # as well as other files, with the *args more messily printed on them, but such that they are easier to read with another
     # Python script, for example.
     
+    if new_folder:
+    
+        current_directory = os.getcwd()
+            
+        final_directory = os.path.join(current_directory, r'dccstructure_output')
+        
+        if not os.path.exists(final_directory):
+            
+           os.makedirs(final_directory)
+           
+        os.chdir(final_directory)
+       
     # First file.
     
     if results == True:
@@ -84,7 +97,11 @@ def write_to_file(*args, results=False):
             
             ft = '%i'
                 
-            if type(args[i]) == np.ndarray and len(np.shape(args[i])) and type(args[i][0,0]) == np.float64:
+            if type(args[i]) == np.ndarray and len(np.shape(args[i])) == 2 and type(args[i][0,0]) == np.float64:
+                
+                ft = '%1.8f'
+                
+            if type(args[i]) == np.ndarray and len(np.shape(args[i])) == 1 and type(args[i][0,0]) == np.float64:
                 
                 ft = '%1.8f'
             
