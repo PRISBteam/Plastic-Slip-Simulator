@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 21/06/2022 18:40
+Last edited on: 28/06/2022 16:22
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -82,4 +82,14 @@ def write_to_file(*args, results=False):
             
             file_name = args[i+1] + '.txt'
             
-            np.savetxt(file_name, args[i], fmt = '%i', delimiter = ' ', header = args[i+1].upper(), comments = '# ')
+            ft = '%i'
+                
+            if type(args[i][0,0]) == np.float64:
+                
+                ft = '%1.8f'
+            
+            np.savetxt(file_name, args[i], fmt = ft, delimiter = ' ', header = args[i+1].upper(), comments = '# ')
+
+
+
+

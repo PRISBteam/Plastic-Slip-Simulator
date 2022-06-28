@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 21 12:00 2022
 
-Last edited on: 28/06/2022 16:00
+Last edited on: 28/06/2022 16:22
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -18,7 +18,7 @@ import numpy as np
 import orientations
 import matrices
 import build
-import geometry
+from geometry import unit_normal
 from iofiles import write_to_file
 
 
@@ -246,6 +246,11 @@ def build_complex(structure, size, dimension=3, basis_vectors=np.array([[1,0,0],
     
 nodes, edges, faces, volumes, adjacency_matrices, incidence_matrices = build_complex('fcc', [1,1,1])
 
-normals = np.array([geometry.unit_normal(i) for i in nodes[faces])
+normals = np.array([unit_normal(i) for i in nodes[faces]])
 
 write_to_file(normals, 'normals')
+
+
+
+
+
