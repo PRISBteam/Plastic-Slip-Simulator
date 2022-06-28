@@ -2,7 +2,7 @@
 """
 Created on Mon Jun 20 15:14 2022
 
-Last edited on: 21/06/2022 17:40
+Last edited on: 28/06/2022 15:45
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -26,20 +26,26 @@ def unit_normal(points):
     Parameters
     ----------
     points : np array (N x 3)
-        An array whose rows are 3D coordinates of points.
+        An array whose rows are 3D coordinates of coplanar points.
 
     Returns
     -------
-    The unit normal vector of a plane defined by the points.
+    The unit normal vector of the plane defined by the points.
     """
     
-    # Because the unit normal is the same for any combination of coplanar points, we only need to consider the first three points.
+    # We take two vectors that point along two edges of a face and find their vector cross product. We define the orientation of
+    # a face as corresponding to this vector.
     
-    normal = np.cross(points[1] - points[0], points[2] - points[0])
+    v1 = points[1] - points[0]
+    v2 = points[2] - points[0]
     
-    magnitude = np.linalg.norm(normal)
+    normal = np.cross(v1, v2)
     
-    return normal / magnitude
+    # Now we just get the unit normal by dividing it by its length.
+    
+    normal = normal / np.linalg.norm(normal)
+    
+    return normal
 
 
 
