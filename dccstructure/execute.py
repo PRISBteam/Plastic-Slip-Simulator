@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 14:40 2022
 
-Last edited on: 21/06/2022 18:45
+Last edited on: 28/06/2022 19:15
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -15,12 +15,12 @@ import numpy as np
 import build
 import matrices
 import orientations
-from geometry import unit_normal
+from geometry import unit_normal, geo_measure
 from iofiles import write_to_file
 
 # https://docs.python.org/3/library/argparse.html
 
-def main():
+def exe_main():
     """
     """
     
@@ -83,6 +83,20 @@ def main():
     )
     
     parser.add_argument(
+        '-a',
+        action = 'store_true',
+        required = False,
+        help = "Whether to also output the areas of 2-cells."
+    )
+    
+    parser.add_argument(
+        '-s',
+        action = 'store_true',
+        required = False,
+        help = "Whether to also output the indices of the 2-cells corresponding to slip planes."
+    )
+    
+    parser.add_argument(
         '-r',
         action = 'store_true',
         required = False,
@@ -98,6 +112,8 @@ def main():
     SIZE = args.size
     degrees_yes = args.d
     normals_yes = args.n
+    areas_yes = args.a
+    slips_yes = args.s
     results_yes = args.r
     
     try:
@@ -198,6 +214,10 @@ def main():
         #------- FACES in BCC
 
         faces, faces_sc = build.create_faces(edges, structure = STRUC, cells_0D = nodes)
+        
+        faces_slip = np.array(list(range(len(faces))))
+        
+        faces_slip = np.delete(faces_slip, faces_sc)
 
         faces_as_edges = orientations.faces_to_edges(faces, edges)
 
@@ -295,26 +315,17 @@ def main():
                                                                 v2f = volumes_as_faces,
                                                                 f2e = faces_as_edges)
 
-    if results_yes:
 
-        write_to_file(adjacency_matrices[0], 'A0',
-                      adjacency_matrices[1], 'A1',
-                      adjacency_matrices[2], 'A2',
-                      adjacency_matrices[3], 'A3',
-                      incidence_matrices[1], 'B10',
-                      incidence_matrices[2], 'B21',
-                      incidence_matrices[3], 'B32',
-                      results = results_yes)
 
-    else:
 
-        write_to_file(adjacency_matrices[0], 'A0',
-                      adjacency_matrices[1], 'A1',
-                      adjacency_matrices[2], 'A2',
-                      adjacency_matrices[3], 'A3',
-                      incidence_matrices[1], 'B10',
-                      incidence_matrices[2], 'B21',
-                      incidence_matrices[3], 'B32')
+    write_to_file(adjacency_matrices[0], 'A0',
+                  adjacency_matrices[1], 'A1',
+                  adjacency_matrices[2], 'A2',
+                  adjacency_matrices[3], 'A3',
+                  incidence_matrices[1], 'B10',
+                  incidence_matrices[2], 'B21',
+                  incidence_matrices[3], 'B32',
+                  results = results_yes)
         
     if degrees_yes:
         
@@ -327,7 +338,19 @@ def main():
         normals = np.array([unit_normal(i) for i in nodes[faces]])
         
         write_to_file(normals, 'normals')
+        
+    if areas_yes:
+        
+        areas = [geo_measure(i) for i in nodes[faces]]
+        
+        write_to_file(areas, 'faces_areas')
+        
+    if slips_yes:
+        
+        write_to_file(faces_slip, 'faces_slip')
 
 
 if __name__ == "__main__":
-    main()
+    exe_main()
+    
+    

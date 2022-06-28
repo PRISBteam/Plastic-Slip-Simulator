@@ -1073,7 +1073,7 @@ def create_faces(cells_1D, structure, cells_0D=None):
                         
                         new_face = new_face[0] # Need the slice [0] because new_face was left as a 2D array above
                         
-                        # Now, faces on slip plaenes are recognisable by being constituted of 3 FCC nodes, or 2 FCC and 1 SC nodes.
+                        # Now, faces on slip planes are recognisable by being constituted of 3 FCC nodes, or 2 FCC and 1 SC nodes.
                         
                         condition = ((new_face[0] in cells_0D[3] and new_face[1] in cells_0D[3] and new_face[2] in cells_0D[3])
                                   or (new_face[0] in cells_0D[1] and new_face[1] in cells_0D[3] and new_face[2] in cells_0D[3])
