@@ -48,3 +48,7 @@ See top.
 ### build_complex.py
 
 This module only has two functions: build_complex() summarises the whole process of building a complex, useful for quickly creating a complex to test out other functions, and bc_main() is a function which is callable via command line/terminal and which outputs several quantities into .txt files.
+
+## Known/unresolved issues:
+
+1. The function build.find_neighbours() returns a TypeError for an asymmetrical BCC structure.
