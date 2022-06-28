@@ -7,6 +7,8 @@ The package DCC_Structure contains Python modules to build a discrete cell compl
 - the lattice basis vectors: pass the argument as nine ints a1, a2, a3, b1, b2, b3, c1, c2, c3. These are the vectors between corners of the unit cell as explained above. A complex with non-orthogonal basis vectors has not been tested;
 - whether or not to also output the node degree matrix;
 - whether or not to also output the unit normal vectors to 2-cells;
+- whether or not to also output the areas of the 2-cells;
+- whether or not to also output the indices of the 2-cells corresponding to slip planes;
 - whether or not to also output the 'results.txt' file as described in the function iofiles.write_to_file().
 
 ## Modules
@@ -45,4 +47,4 @@ See top.
 
 ### build_complex.py
 
-This module only has one function, also called build_complex(), which is similar to execute.py, but while execute.py focuses on the topology of the complex, build_complex returns the nodes, edges, faces and volumes, as well as the incidence and adjacency matrices.
+This module only has two functions: build_complex() summarises the whole process of building a complex, useful for quickly creating a complex to test out other functions, and bc_main() is a function which is callable via command line/terminal and which outputs several quantities into .txt files.
