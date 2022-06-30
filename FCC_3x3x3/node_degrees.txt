@@ -1,4 +1,3 @@
-# NODE_DEGREES
 6
 9
 9
