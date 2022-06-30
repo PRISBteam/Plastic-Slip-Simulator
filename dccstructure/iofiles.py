@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 28/06/2022 20:06
+Last edited on: 30/06/2022 13:20
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -109,7 +109,7 @@ def write_to_file(*args, new_folder = True, results=False):
                 
                 ft = '%1.8f'
             
-            np.savetxt(file_name, args[i], fmt = ft, delimiter = ' ', header = args[i+1].upper(), comments = '# ')
+            np.savetxt(file_name, args[i], fmt = ft, delimiter = ' ', comments = '# ')
 
 
 

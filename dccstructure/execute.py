@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 14:40 2022
 
-Last edited on: 28/06/2022 20:12
+Last edited on: 30/06/2022 13:20
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -316,15 +316,16 @@ def exe_main():
                                                          f2e = faces_as_edges)
 
 
-
+    nrs_cells = np.array([[len(nodes)], [len(edges)], [len(faces)], [len(volumes)]])
 
     write_to_file(adjacency_matrices[0], 'A0',
                   adjacency_matrices[1], 'A1',
                   adjacency_matrices[2], 'A2',
                   adjacency_matrices[3], 'A3',
-                  incidence_matrices[1], 'B10',
-                  incidence_matrices[2], 'B21',
-                  incidence_matrices[3], 'B32',
+                  incidence_matrices[1], 'B1',
+                  incidence_matrices[2], 'B2',
+                  incidence_matrices[3], 'B3',
+                  nrs_cells, 'number_of_cells',
                   results = results_yes)
         
     if degrees_yes:
