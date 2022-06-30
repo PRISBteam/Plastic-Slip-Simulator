@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 14:40 2022
 
-Last edited on: 30/06/2022 13:20
+Last edited on: 30/06/2022 18:00
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -96,14 +96,8 @@ def exe_main():
         help = "Whether to also output the indices of the 2-cells corresponding to slip planes."
     )
     
-    parser.add_argument(
-        '-r',
-        action = 'store_true',
-        required = False,
-        help = "Whether to also output the 'results.txt' file from iofiles.write_to_file()."
-    )
     
-    # Execute the complex
+    # Sort out variables from the arguments
         
     args = parser.parse_args()
 
@@ -114,7 +108,6 @@ def exe_main():
     normals_yes = args.n
     areas_yes = args.a
     slips_yes = args.s
-    results_yes = args.r
     
     try:
         
@@ -128,6 +121,9 @@ def exe_main():
     
     except:
         LATTICE = np.array([[1,0,0],[0,1,0],[0,0,1]]) ################
+        
+    
+    # Execute the complex
 
     first_u_cell = np.array([[0,0,0]]) + np.sum(LATTICE, axis=0) / 2
 
@@ -159,33 +155,6 @@ def exe_main():
         volumes = build.create_volumes(LATTICE, STRUC, cells_0D = nodes)
 
         volumes_as_faces = orientations.volumes_to_faces(volumes, faces, faces_per_volume = 6)
-
-        volumes_as_faces, faces_as_edges = orientations.find_relative_orientations(cells_3D = volumes,
-                                                                                   cells_2D = faces,
-                                                                                   cells_1D = edges,
-                                                                                   cells_0D = nodes,
-                                                                                   v2f = volumes_as_faces,
-                                                                                   f2e = faces_as_edges)
-        
-        #------- MATRICES in SC
-
-        adjacency_matrices = matrices.combinatorial_form(structure = STRUC,
-                                                         degree = 0,
-                                                         cells_3D = volumes,
-                                                         cells_2D = faces,
-                                                         cells_1D = edges,
-                                                         cells_0D = nodes,
-                                                         v2f = volumes_as_faces,
-                                                         f2e = faces_as_edges)
-
-        incidence_matrices = matrices.combinatorial_form(structure = STRUC,
-                                                         degree = 1,
-                                                         cells_3D = volumes,
-                                                         cells_2D = faces,
-                                                         cells_1D = edges,
-                                                         cells_0D = nodes,
-                                                         v2f = volumes_as_faces,
-                                                         f2e = faces_as_edges)
 
 
 
@@ -225,34 +194,8 @@ def exe_main():
 
         volumes = build.create_volumes(LATTICE, STRUC, cells_2D = faces)
 
-        volumes_as_faces = orientations.volumes_to_faces(volumes, faces)
-
-        volumes_as_faces, faces_as_edges = orientations.find_relative_orientations(cells_3D = volumes,
-                                                                                   cells_2D = faces,
-                                                                                   cells_1D = edges,
-                                                                                   cells_0D = nodes,
-                                                                                   v2f = volumes_as_faces,
-                                                                                   f2e = faces_as_edges)
-
-        #------- MATRICES in BCC
-
-        adjacency_matrices = matrices.combinatorial_form(structure = STRUC,
-                                                         degree = 0,
-                                                         cells_3D = volumes,
-                                                         cells_2D = faces,
-                                                         cells_1D = edges,
-                                                         cells_0D = nodes,
-                                                         v2f = volumes_as_faces,
-                                                         f2e = faces_as_edges)
-
-        incidence_matrices = matrices.combinatorial_form(structure = STRUC,
-                                                         degree = 1,
-                                                         cells_3D = volumes,
-                                                         cells_2D = faces,
-                                                         cells_1D = edges,
-                                                         cells_0D = nodes,
-                                                         v2f = volumes_as_faces,
-                                                         f2e = faces_as_edges)
+        volumes_as_faces = orientations.volumes_to_faces(volumes, faces)        
+        
 
 
     elif STRUC == 'fcc':
@@ -266,6 +209,7 @@ def exe_main():
                                                                      lattice = LATTICE,
                                                                      size = SIZE,
                                                                      dim = DIM)
+                
         #------- EDGES in FCC
 
         edges, edges_sc, edges_bcc_fcc, edges_fcc2, edges_fcc_sc = build.find_neighbours(nodes,
@@ -273,6 +217,8 @@ def exe_main():
                                                                                          structure = STRUC,
                                                                                          dim = DIM,
                                                                                          special_0D = (nodes_sc, nodes_bcc, nodes_fcc))
+        
+        del edges_sc, edges_bcc_fcc, edges_fcc2, edges_fcc_sc
         
         #------- FACES in FCC
 
@@ -287,46 +233,63 @@ def exe_main():
         volumes = build.create_volumes(LATTICE, STRUC, cells_2D = faces)
 
         volumes_as_faces = orientations.volumes_to_faces(volumes, faces)
+        
+    
+    
+    #------- MATRICES in all structures
 
-        volumes_as_faces, faces_as_edges = orientations.find_relative_orientations(cells_3D = volumes,
-                                                                                   cells_2D = faces,
-                                                                                   cells_1D = edges,
-                                                                                   cells_0D = nodes,
-                                                                                   v2f = volumes_as_faces,
-                                                                                   f2e = faces_as_edges)
+    volumes_as_faces, faces_as_edges = orientations.find_relative_orientations(cells_3D = volumes,
+                                                                               cells_2D = faces,
+                                                                               cells_1D = edges,
+                                                                               cells_0D = nodes,
+                                                                               v2f = volumes_as_faces,
+                                                                               f2e = faces_as_edges)
 
-        #------- MATRICES in FCC
+    incidence_matrices = matrices.combinatorial_form(structure = STRUC,
+                                                     degree = 1,
+                                                     cells_3D = volumes,
+                                                     cells_2D = faces,
+                                                     cells_1D = edges,
+                                                     cells_0D = nodes,
+                                                     v2f = volumes_as_faces,
+                                                     f2e = faces_as_edges)
 
-        adjacency_matrices = matrices.combinatorial_form(structure = STRUC,
-                                                         degree = 0,
-                                                         cells_3D = volumes,
-                                                         cells_2D = faces,
-                                                         cells_1D = edges,
-                                                         cells_0D = nodes,
-                                                         v2f = volumes_as_faces,
-                                                         f2e = faces_as_edges)
-
-        incidence_matrices = matrices.combinatorial_form(structure = STRUC,
-                                                         degree = 1,
-                                                         cells_3D = volumes,
-                                                         cells_2D = faces,
-                                                         cells_1D = edges,
-                                                         cells_0D = nodes,
-                                                         v2f = volumes_as_faces,
-                                                         f2e = faces_as_edges)
+    write_to_file(incidence_matrices[1], 'B1',
+                  incidence_matrices[2], 'B2',
+                  incidence_matrices[3], 'B3',
+                  new_folder = True)
+    
+    del incidence_matrices
 
 
-    nrs_cells = np.array([[len(nodes)], [len(edges)], [len(faces)], [len(volumes)]])
+
+    adjacency_matrices = matrices.combinatorial_form(structure = STRUC,
+                                                     degree = 0,
+                                                     cells_3D = volumes,
+                                                     cells_2D = faces,
+                                                     cells_1D = edges,
+                                                     cells_0D = nodes,
+                                                     v2f = volumes_as_faces,
+                                                     f2e = faces_as_edges)
 
     write_to_file(adjacency_matrices[0], 'A0',
                   adjacency_matrices[1], 'A1',
                   adjacency_matrices[2], 'A2',
                   adjacency_matrices[3], 'A3',
-                  incidence_matrices[1], 'B1',
-                  incidence_matrices[2], 'B2',
-                  incidence_matrices[3], 'B3',
-                  nrs_cells, 'number_of_cells',
-                  results = results_yes)
+                  new_folder = False)
+    
+    del adjacency_matrices
+
+
+
+    nrs_cells = np.array([[len(nodes)], [len(edges)], [len(faces)], [len(volumes)]])
+
+    write_to_file(nrs_cells, 'number_of_cells',
+                  new_folder = False)
+    
+    del nrs_cells
+    
+    
         
     if degrees_yes:
         
@@ -340,15 +303,24 @@ def exe_main():
         
         write_to_file(normals, 'normals', new_folder = False)
         
+        del normals
+        
     if areas_yes:
         
         areas = [geo_measure(i) for i in nodes[faces]]
         
         write_to_file(areas, 'faces_areas', new_folder = False)
         
+        del areas
+        
     if slips_yes:
         
         write_to_file(faces_slip, 'faces_slip', new_folder = False)
+
+
+
+""" ----------------------------------------------------------------------------------------- """
+
 
 
 if __name__ == "__main__":
