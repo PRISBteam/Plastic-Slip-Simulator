@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 14:40 2022
 
-Last edited on: 30/06/2022 18:00
+Last edited on: 30/06/2022 18:05
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -297,6 +297,8 @@ def exe_main():
         
         write_to_file(node_degrees, 'node_degrees', new_folder = False)
         
+        del node_degrees
+        
     if normals_yes:
         
         normals = np.array([unit_normal(i) for i in nodes[faces]])
@@ -316,6 +318,8 @@ def exe_main():
     if slips_yes:
         
         write_to_file(faces_slip, 'faces_slip', new_folder = False)
+        
+    del faces_slip
 
 
 
