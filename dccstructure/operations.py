@@ -17,7 +17,7 @@ on the DCC complex.
 
 import numpy as np
 from math import factorial
-import geometry
+from dccstructure import geometry
 # from build_complex import build_complex
 
 

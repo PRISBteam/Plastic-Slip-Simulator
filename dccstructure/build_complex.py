@@ -16,11 +16,12 @@ This module is part of the dccstructure package. In here you will find functions
 
 import argparse
 import numpy as np
-import orientations
-import matrices
-import build
-from geometry import unit_normal, geo_measure
-from iofiles import write_to_file
+
+from dccstructure import orientations
+from dccstructure import matrices
+from dccstructure import build
+from dccstructure.geometry import unit_normal, geo_measure
+from dccstructure.iofiles import write_to_file
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #
