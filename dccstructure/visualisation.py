@@ -17,7 +17,7 @@ This module is part of the DCC_Structure package. In here you will find a functi
 import numpy as np
 from scipy.spatial.distance import cdist
 from itertools import combinations # to avoid nested for loops
-from iofiles import write_to_file
+from dccstructure.iofiles import write_to_file
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #

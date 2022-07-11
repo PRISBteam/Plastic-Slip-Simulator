@@ -18,7 +18,7 @@ and edges.
 
 import numpy as np
 from itertools import combinations # to avoid nested for loops
-from build import find_equal_rows
+from dccstructure.build import find_equal_rows
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #

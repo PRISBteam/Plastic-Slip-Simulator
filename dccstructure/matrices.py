@@ -18,8 +18,8 @@ matrices, adjacency matrices, and other combinatorial forms, given a cell comple
 import numpy as np
 from itertools import combinations # to avoid nested for loops
 from scipy import sparse
-from build import find_equal_rows
-import orientations as dcco
+from dccstructure.build import find_equal_rows
+from dccstructure import orientations as dcco
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #
