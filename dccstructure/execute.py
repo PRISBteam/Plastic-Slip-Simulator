@@ -2,12 +2,33 @@
 """
 Created on Tue Jun 7 14:40 2022
 
-Last edited on: 30/06/2022 18:05
+Last edited on: 12/07/2022 11:50
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
-This module is part of the DCC_Structure package. In here you will find a useful function for executing the whole package from
-setting the nodes to obtaining the adjacency matrices and oriented incidence matrices.
+This module is part of the dccstructure package. It is meant to be run from a command line/terminal in the directory of
+the dccstructure package. It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex
+with the parameters specified.
+
+This file can be run with the command
+
+    python execute.py (+ arguments)
+
+Arguments that can be passed:
+    
+    Mandatory:
+        
+        --size int int int : specifies the number of unit cells in the directions x, y, z (default is 1 1 1);
+        --struc str : specifies the crystallographic structure of the complex;
+        
+    Optional:
+        
+        --dim int : specifies the dimension of the complex (default is 3);
+        --basisv flt flt flt flt flt flt flt flt flt : specifies the 9 components of the 3 lattice basis vectors;
+        -d bool : if True, the code will output the node degrees;
+        -n bool : if True, the code will output the unit normals to the 2-cells;
+        -a bool : if True, the code will output the areas of the 2-cells;
+        -s bool : if True, the code will output the indices of 2-cells corresponding to slip planes;
 """
 
 import argparse

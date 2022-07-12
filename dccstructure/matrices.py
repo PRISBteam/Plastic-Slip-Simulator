@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 21/06/2022 11:15
+Last edited on: 12/07/2022 12:10
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -18,8 +18,33 @@ matrices, adjacency matrices, and other combinatorial forms, given a cell comple
 import numpy as np
 from itertools import combinations # to avoid nested for loops
 from scipy import sparse
-from dccstructure.build import find_equal_rows
-from dccstructure import orientations as dcco
+
+import os
+
+directory = os.getcwd().split('/')
+
+if 'dccstructure' in directory:
+    
+    directory.remove('dccstructure')
+    
+    directory = '/'.join(str(i) for i in directory)
+    
+    os.chdir(directory)
+    
+    from dccstructure.build import find_equal_rows
+    from dccstructure import orientations as dcco
+    
+    directory = os.path.join(directory, r'dccstructure')
+       
+    os.chdir(directory)
+    
+else:
+    
+    from dccstructure.build import find_equal_rows
+    from dccstructure import orientations as dcco
+    
+del directory
+
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #

@@ -1,3 +1,37 @@
+"""
+Created on Sat Jul 2 2022
+
+Last edited on: 12/07/2022 11:45
+
+Author: Afonso Barroso, 9986055, The University of Manchester
+
+This module is part of the dccstructure package. It is meant to be run from a command line/terminal in the directory containing
+the dccstructure package. It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex
+with the parameters specified.
+
+This file can be run with the command
+
+    python -m dccstructure (+ arguments)
+
+Arguments that can be passed:
+    
+    Mandatory:
+        
+        --size int int int : specifies the number of unit cells in the directions x, y, z (default is 1 1 1);
+        --struc str : specifies the crystallographic structure of the complex;
+        
+    Optional:
+        
+        --dim int : specifies the dimension of the complex (default is 3);
+        --basisv flt flt flt flt flt flt flt flt flt : specifies the 9 components of the 3 lattice basis vectors;
+        -d bool : if True, the code will output the node degrees;
+        -n bool : if True, the code will output the unit normals to the 2-cells;
+        -a bool : if True, the code will output the areas of the 2-cells;
+        -s bool : if True, the code will output the indices of 2-cells corresponding to slip planes;
+
+"""
+
+
 import argparse
 import numpy as np
 
@@ -6,6 +40,7 @@ from dccstructure import matrices
 from dccstructure import orientations
 from dccstructure.geometry import unit_normal, geo_measure
 from dccstructure.iofiles import write_to_file
+
 
 # Set the arguments for the command line / terminal
 parser = argparse.ArgumentParser(description='Some description')
@@ -28,13 +63,12 @@ parser.add_argument(
     type = int,
     required = True,
     help = 'The number of unit cells in each spatial direction (each unit cell is bounded by 8 nodes in simple cubic-like positions). ' +
-            'For an FCC structure in the complex, each unit cell has 28 3-cells; for BCC, each unit cell has 24 3-cells.'
+           'For an FCC structure in the complex, each unit cell has 28 3-cells; for BCC, each unit cell has 24 3-cells.'
 )
 
 parser.add_argument(
     '--struc',
     action = 'store',
-    default = 'bcc',
     choices = ['simple cubic', 'bcc', 'fcc', 'hcp'],
     required = True,
     help = "The complex's lattice structure. Choose from: simple cubic, bcc, fcc or hcp."
@@ -102,6 +136,7 @@ try:
             LATTICE[i,2] = args.basisv[[6,7,8]]
 
 except:
+    
     LATTICE = np.array([[1,0,0],[0,1,0],[0,0,1]]) ################
     
 
@@ -147,18 +182,18 @@ elif STRUC == 'bcc':
     first_node = first_u_cell - np.sum(LATTICE, axis=0) / 2
 
     nodes, (nodes_sc, nodes_bcc, nodes_virtual) = build.create_nodes(structure = STRUC,
-                                                                        origin = first_node,
-                                                                        lattice = LATTICE,
-                                                                        size = SIZE,
-                                                                        dim = DIM,
-                                                                        axis = 2)
+                                                                     origin = first_node,
+                                                                     lattice = LATTICE,
+                                                                     size = SIZE,
+                                                                     dim = DIM,
+                                                                     axis = 2)
 
     #------- EDGES in BCC
 
     edges, edges_sc, edges_bcc, edges_virtual = build.find_neighbours(nodes, LATTICE,
-                                                                        structure = STRUC,
-                                                                        dim=DIM,
-                                                                        special_0D = (nodes[nodes_sc],
+                                                                      structure = STRUC,
+                                                                      dim=DIM,
+                                                                      special_0D = (nodes[nodes_sc],
                                                                                     nodes[nodes_bcc],
                                                                                     nodes[nodes_virtual]))
 
@@ -187,26 +222,28 @@ elif STRUC == 'fcc':
     first_node = first_u_cell - (LATTICE[0] + LATTICE[1] + LATTICE[2]) / 2
 
     nodes, (nodes_sc, nodes_bcc, nodes_fcc) = build.create_nodes(structure = 'bcc',
-                                                                    origin = first_node,
-                                                                    lattice = LATTICE,
-                                                                    size = SIZE,
-                                                                    dim = DIM)
+                                                                 origin = first_node,
+                                                                 lattice = LATTICE,
+                                                                 size = SIZE,
+                                                                 dim = DIM)
             
     #------- EDGES in FCC
 
     edges, edges_sc, edges_bcc_fcc, edges_fcc2, edges_fcc_sc = build.find_neighbours(nodes,
-                                                                                        lattice = LATTICE,
-                                                                                        structure = STRUC,
-                                                                                        dim = DIM,
-                                                                                        special_0D = (nodes_sc, nodes_bcc, nodes_fcc))
+                                                                                     lattice = LATTICE,
+                                                                                     structure = STRUC,
+                                                                                     dim = DIM,
+                                                                                     special_0D = (nodes_sc,
+                                                                                                   nodes_bcc,
+                                                                                                   nodes_fcc))
     
     del edges_sc, edges_bcc_fcc, edges_fcc2, edges_fcc_sc
     
     #------- FACES in FCC
 
     faces, faces_slip = build.create_faces(edges,
-                                            structure = STRUC,
-                                            cells_0D = (nodes, nodes_sc, nodes_bcc, nodes_fcc))
+                                           structure = STRUC,
+                                           cells_0D = (nodes, nodes_sc, nodes_bcc, nodes_fcc))
 
     faces_as_edges = orientations.faces_to_edges(faces, edges)
 
@@ -221,44 +258,44 @@ elif STRUC == 'fcc':
 #------- MATRICES in all structures
 
 volumes_as_faces, faces_as_edges = orientations.find_relative_orientations(cells_3D = volumes,
-                                                                            cells_2D = faces,
-                                                                            cells_1D = edges,
-                                                                            cells_0D = nodes,
-                                                                            v2f = volumes_as_faces,
-                                                                            f2e = faces_as_edges)
+                                                                           cells_2D = faces,
+                                                                           cells_1D = edges,
+                                                                           cells_0D = nodes,
+                                                                           v2f = volumes_as_faces,
+                                                                           f2e = faces_as_edges)
 
 incidence_matrices = matrices.combinatorial_form(structure = STRUC,
-                                                    degree = 1,
-                                                    cells_3D = volumes,
-                                                    cells_2D = faces,
-                                                    cells_1D = edges,
-                                                    cells_0D = nodes,
-                                                    v2f = volumes_as_faces,
-                                                    f2e = faces_as_edges)
+                                                 degree = 1,
+                                                 cells_3D = volumes,
+                                                 cells_2D = faces,
+                                                 cells_1D = edges,
+                                                 cells_0D = nodes,
+                                                 v2f = volumes_as_faces,
+                                                 f2e = faces_as_edges)
 
 write_to_file(incidence_matrices[1], 'B1',
-                incidence_matrices[2], 'B2',
-                incidence_matrices[3], 'B3',
-                new_folder = True)
+              incidence_matrices[2], 'B2',
+              incidence_matrices[3], 'B3',
+              new_folder = True)
 
 del incidence_matrices
 
 
 
 adjacency_matrices = matrices.combinatorial_form(structure = STRUC,
-                                                    degree = 0,
-                                                    cells_3D = volumes,
-                                                    cells_2D = faces,
-                                                    cells_1D = edges,
-                                                    cells_0D = nodes,
-                                                    v2f = volumes_as_faces,
-                                                    f2e = faces_as_edges)
+                                                 degree = 0,
+                                                 cells_3D = volumes,
+                                                 cells_2D = faces,
+                                                 cells_1D = edges,
+                                                 cells_0D = nodes,
+                                                 v2f = volumes_as_faces,
+                                                 f2e = faces_as_edges)
 
 write_to_file(adjacency_matrices[0], 'A0',
-                adjacency_matrices[1], 'A1',
-                adjacency_matrices[2], 'A2',
-                adjacency_matrices[3], 'A3',
-                new_folder = False)
+              adjacency_matrices[1], 'A1',
+              adjacency_matrices[2], 'A2',
+              adjacency_matrices[3], 'A3',
+              new_folder = False)
 
 del adjacency_matrices
 
@@ -267,7 +304,7 @@ del adjacency_matrices
 nrs_cells = np.array([[len(nodes)], [len(edges)], [len(faces)], [len(volumes)]])
 
 write_to_file(nrs_cells, 'number_of_cells',
-                new_folder = False)
+              new_folder = False)
 
 del nrs_cells
 
@@ -281,6 +318,8 @@ if degrees_yes:
     
     del node_degrees
     
+    
+    
 if normals_yes:
     
     normals = np.array([unit_normal(i) for i in nodes[faces]])
@@ -288,6 +327,8 @@ if normals_yes:
     write_to_file(normals, 'normals', new_folder = False)
     
     del normals
+    
+    
     
 if areas_yes:
     
@@ -297,8 +338,12 @@ if areas_yes:
     
     del areas
     
+    
+    
 if slips_yes:
     
     write_to_file(faces_slip, 'faces_slip', new_folder = False)
     
 del faces_slip
+
+

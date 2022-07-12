@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 07/06/2022 14:50
+Last edited on: 12/07/2022 12:10
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -15,9 +15,7 @@ This module is part of the DCC_Structure package. In here you will find a functi
 
 
 import numpy as np
-from scipy.spatial.distance import cdist
 from itertools import combinations # to avoid nested for loops
-from dccstructure.iofiles import write_to_file
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #

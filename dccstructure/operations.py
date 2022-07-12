@@ -2,7 +2,7 @@
 """
 Created on Mon Jun 20 16:27 2022
 
-Last edited on: 23/06/2022 11:00
+Last edited on: 12/07/2022 12:10
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -17,7 +17,31 @@ on the DCC complex.
 
 import numpy as np
 from math import factorial
-from dccstructure import geometry
+
+import os
+
+directory = os.getcwd().split('/')
+
+if 'dccstructure' in directory:
+    
+    directory.remove('dccstructure')
+    
+    directory = '/'.join(str(i) for i in directory)
+    
+    os.chdir(directory)
+    
+    from dccstructure import geometry
+    
+    directory = os.path.join(directory, r'dccstructure')
+       
+    os.chdir(directory)
+    
+else:
+    
+    from dccstructure import geometry
+    
+del directory
+
 # from build_complex import build_complex
 
 
