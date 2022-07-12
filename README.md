@@ -48,7 +48,10 @@ This module contains a (non-optimised and not as-of-yet user-friendly) function 
 
 ### execute.py
 
-See top.
+This module is meant to be run from a command line/terminal in the directory of the dccstructure package. It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex with the parameters specified. This file can be run with the command
+    python execute.py (+ arguments)
+    
+(This is extremely similar to _mmain__.py. The only difference is the directory from which the file is run.)
 
 ### build_complex.py
 
@@ -59,3 +62,4 @@ This module only has two functions: build_complex() summarises the whole process
 1. The function build.find_neighbours() returns a TypeError for an asymmetrical BCC structure.
 2. The function visualisation.graph_complex() is currently unoperational, since it needs yet to be updated to the module-like version of the code (as it is written, it is still from the time when the whole code was written in a single .py file).
 3. There might be issues with importing modules from within the the package itself.
+4. There is a redundancy between the files __main__.py and execute.py.
