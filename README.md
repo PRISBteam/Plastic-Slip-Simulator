@@ -13,7 +13,7 @@ The package DCC_Structure contains Python modules to build a discrete cell compl
 
 ## Modules
 
-### __main__.py
+### \_\_main\_\_.py
 
 This module is meant to be run from a command line/terminal in the directory containing the dccstructure package. It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex with the parameters specified. This file can be run with the command
     python -m dccstructure (+ arguments)
@@ -62,4 +62,4 @@ This module only has two functions: build_complex() summarises the whole process
 1. The function build.find_neighbours() returns a TypeError for an asymmetrical BCC structure.
 2. The function visualisation.graph_complex() is currently unoperational, since it needs yet to be updated to the module-like version of the code (as it is written, it is still from the time when the whole code was written in a single .py file).
 3. There might be issues with importing modules from within the the package itself.
-4. There is a redundancy between the files __main__.py and execute.py.
+4. There is a redundancy between the files \_\_main\_\_.py and execute.py.
