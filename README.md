@@ -13,6 +13,11 @@ The package DCC_Structure contains Python modules to build a discrete cell compl
 
 ## Modules
 
+### __main__.py
+
+This module is meant to be run from a command line/terminal in the directory containing the dccstructure package. It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex with the parameters specified. This file can be run with the command
+    python -m dccstructure (+ arguments)
+
 ### build.py
 
 This module contains the functions necessary to construct the complex, from 0-cells to 3-cells.
