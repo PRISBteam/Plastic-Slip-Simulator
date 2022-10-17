@@ -1,13 +1,14 @@
 """
 Created on Sat Jul 2 2022
 
-Last edited on: 12/07/2022 11:45
+Last edited on: 17/10/2022 14:30
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
-This module is part of the dccstructure package. It is meant to be run from a command line/terminal in the directory containing
+This module is part of the dccstructure package. It is meant to be run from a command line/terminal in a directory containing
 the dccstructure package. It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex
-with the parameters specified.
+with the parameters specified. It does not return the nodes, edges, faces, volumes, but rather the topological matrices (incidence
+and adjacency) and other topological and geometric information pertinent for the discrete Naimark microshear model.
 
 This file can be run with the command
 
@@ -137,125 +138,34 @@ try:
 
 except:
     
-    LATTICE = np.array([[1,0,0],[0,1,0],[0,0,1]]) ################
+    LATTICE = np.array([[1,0,0],[0,1,0],[0,0,1]])
+    print('/n/nDue to error in parsing argument, the lattice basis vectors have been changed to [1,0,0], [0,1,0] and [0,0,1]./n/n') ################
     
 
 # Execute the complex
 
-first_u_cell = np.array([[0,0,0]]) + np.sum(LATTICE, axis=0) / 2
-
+nodes, edges, faces, faces_slip, volumes = build.build_complex(struc = STRUC,
+                                                               size = SIZE,
+                                                               lattice = LATTICE,
+                                                               dim = DIM,
+                                                               extras = False)
 
 if STRUC == 'simple cubic':
-
-    #------- NODES in SC
-
-    first_node = first_u_cell - np.sum(LATTICE, axis=0) / 2
-
-    nodes = build.create_nodes(structure = STRUC,
-                                origin = first_node,
-                                lattice = LATTICE,
-                                size = SIZE,
-                                dim = DIM)
-
-    #------- EDGES in SC
-
-    edges = build.find_neighbours(nodes, LATTICE, structure = STRUC, dim=DIM)
-
-    #------- FACES in SC
-
-    faces = build.create_faces(edges, structure = STRUC)
-
+    
     faces_as_edges = orientations.faces_to_edges(faces, edges, edges_per_face = 4)
-
-    #------- VOLUMES in SC
-
-    volumes = build.create_volumes(LATTICE, STRUC, cells_0D = nodes)
 
     volumes_as_faces = orientations.volumes_to_faces(volumes, faces, faces_per_volume = 6)
 
 
 
-elif STRUC == 'bcc':
-
-    #------- NODES in BCC
-
-    first_node = first_u_cell - np.sum(LATTICE, axis=0) / 2
-
-    nodes, (nodes_sc, nodes_bcc, nodes_virtual) = build.create_nodes(structure = STRUC,
-                                                                     origin = first_node,
-                                                                     lattice = LATTICE,
-                                                                     size = SIZE,
-                                                                     dim = DIM,
-                                                                     axis = 2)
-
-    #------- EDGES in BCC
-
-    edges, edges_sc, edges_bcc, edges_virtual = build.find_neighbours(nodes, LATTICE,
-                                                                      structure = STRUC,
-                                                                      dim=DIM,
-                                                                      special_0D = (nodes[nodes_sc],
-                                                                                    nodes[nodes_bcc],
-                                                                                    nodes[nodes_virtual]))
-
-    #------- FACES in BCC
-
-    faces, faces_sc = build.create_faces(edges, structure = STRUC, cells_0D = nodes)
-    
-    faces_slip = np.array(list(range(len(faces))))
-    
-    faces_slip = list(np.delete(faces_slip, faces_sc))
+elif STRUC in ['bcc', 'fcc']:
 
     faces_as_edges = orientations.faces_to_edges(faces, edges)
 
-    #------- VOLUMES in BCC
-
-    volumes = build.create_volumes(LATTICE, STRUC, cells_2D = faces)
-
-    volumes_as_faces = orientations.volumes_to_faces(volumes, faces)        
-    
+    volumes_as_faces = orientations.volumes_to_faces(volumes, faces)            
 
 
-elif STRUC == 'fcc':
-
-    #------- NODES in FCC
-
-    first_node = first_u_cell - (LATTICE[0] + LATTICE[1] + LATTICE[2]) / 2
-
-    nodes, (nodes_sc, nodes_bcc, nodes_fcc) = build.create_nodes(structure = 'bcc',
-                                                                 origin = first_node,
-                                                                 lattice = LATTICE,
-                                                                 size = SIZE,
-                                                                 dim = DIM)
-            
-    #------- EDGES in FCC
-
-    edges, edges_sc, edges_bcc_fcc, edges_fcc2, edges_fcc_sc = build.find_neighbours(nodes,
-                                                                                     lattice = LATTICE,
-                                                                                     structure = STRUC,
-                                                                                     dim = DIM,
-                                                                                     special_0D = (nodes_sc,
-                                                                                                   nodes_bcc,
-                                                                                                   nodes_fcc))
-    
-    del edges_sc, edges_bcc_fcc, edges_fcc2, edges_fcc_sc
-    
-    #------- FACES in FCC
-
-    faces, faces_slip = build.create_faces(edges,
-                                           structure = STRUC,
-                                           cells_0D = (nodes, nodes_sc, nodes_bcc, nodes_fcc))
-
-    faces_as_edges = orientations.faces_to_edges(faces, edges)
-
-    #------- VOLUMES in FCC
-
-    volumes = build.create_volumes(LATTICE, STRUC, cells_2D = faces)
-
-    volumes_as_faces = orientations.volumes_to_faces(volumes, faces)
-    
-
-
-#------- MATRICES in all structures
+# MATRICES in all structures
 
 volumes_as_faces, faces_as_edges = orientations.find_relative_orientations(cells_3D = volumes,
                                                                            cells_2D = faces,
@@ -301,7 +211,7 @@ del adjacency_matrices
 
 
 
-nrs_cells = np.array([[len(nodes)], [len(edges)], [len(faces)], [len(volumes)]])
+nrs_cells = np.array([[len(nodes)], [len(edges)], [len(faces)], [len(faces_slip)], [len(volumes)]])
 
 write_to_file(nrs_cells, 'number_of_cells',
               new_folder = False)
@@ -343,7 +253,5 @@ if areas_yes:
 if slips_yes:
     
     write_to_file(faces_slip, 'faces_slip', new_folder = False)
-    
-del faces_slip
 
 

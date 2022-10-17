@@ -2,7 +2,7 @@
 """
 Created on Tue Jun 7 12:43 2022
 
-Last edited on: 28/06/2022 20:12
+Last edited on: 17/10/2022 19:00
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -210,7 +210,7 @@ def create_nodes(structure=None, origin=None, lattice=None, size=None, dim=None,
     dim: int
         The dimension of the space. The default is None.
     axis: int
-        The created lattice lies on the plane perpendicular to the axis, where 0 = x, 1 = y and 2 = z. The default is None.
+        Relevant for 2D lattices. The created lattice lies on the plane perpendicular to the axis, where 0 = x, 1 = y and 2 = z. The default is None.
 
     Returns
     -------
@@ -239,17 +239,20 @@ def create_nodes(structure=None, origin=None, lattice=None, size=None, dim=None,
         elif structure == 'bcc':
             
             """ inputs needed: structure, origin, lattice, size, dim, axis (2D only) """
-            
-            # For a bcc structure, we build the lattice by starting with the first node, which will be at the origin (0,0,0) and use the
-            # transl_copy() function to form the bottom line of the sample. Then, we set a new node at the centre of the first unit cell
-            # and use the transl_copy() function to create a second lline of nodes. For the third line, we origin with a node at position
-            # (0,0,1) and repeat the procedure we did for the first line. And so on.
     
             if dim == 2:
                 
+                # For a bcc structure, we build the lattice by starting with the first node, which will be at the origin (0,0,0) and use the
+                # transl_copy() function to form the bottom line of the sample. Then, we set a new node at the centre of the first unit cell
+                # and use the transl_copy() function to create a second line of nodes. For the third line, we start with a node at position
+                # (0,0,1) and repeat the procedure we did for the first line. And so on.
+                
                 ax1 = (axis + 1) % 3
                 ax2 = (axis + 2) % 3
-                            
+                
+                # 'axis' is the index (0, 1 or 2) of the Cartesian axis perpendicular to which lies the 2D lattice, so
+                # ax1 and ax2 define the plane on which lies the 2D lattice
+                
                 # First line:
                 
                 nodes = transl_copy(origin, lattice[ax1], size[ax1] + 1, axis=ax1)
@@ -261,20 +264,19 @@ def create_nodes(structure=None, origin=None, lattice=None, size=None, dim=None,
                 for i in range(1, size[ax2] * 2 + 1): # Need the +1 bc range() is exclusive at the top value
                     
                     # The bottom line of the crystal is done, and now we need to make the subsequent lines of atoms. For each layer of
-                    # unit cells (in an axis+1 = const plane), we need to add two new lines, the first corresponding to the proper bcc atoms, and the
-                    # second corresponding to the otherwise regular simple cubic atoms
+                    # unit cells (in an axis+1 = x, y or z = const plane), we need to add two new lines, the first corresponding to the proper
+                    # bcc atoms, and the second corresponding to the otherwise regular simple cubic atoms
                     #
-                    #   i = 4  axis+1 = 2   *   *   *   *   *   *  <-- usual simple cubic atom line
-                    #   i = 3                 *   *   *   *   *    <-- proper bcc atom line
-                    #   i = 2  axis+1 = 1   *   *   *   *   *   *  <-- usual simple cubic atom line
-                    #   i = 1                 *   *   *   *   *    <-- proper bcc atom line
-                    #          axis+1 = 0   *   *   *   *   *   *  <-- bottom line
+                    #   i = 4  ax2 = 2   *   *   *   *   *   *  <-- usual simple cubic atom line
+                    #   i = 3              *   *   *   *   *    <-- proper bcc atom line
+                    #   i = 2  ax2 = 1   *   *   *   *   *   *  <-- usual simple cubic atom line
+                    #   i = 1              *   *   *   *   *    <-- proper bcc atom line
+                    #          ax2 = 0   *   *   *   *   *   *  <-- bottom line
                     
                     
                     start_node = (origin +
-                                  (i % 2) * (i - 1) / 2 * lattice[ax2] +
-                                  (i % 2) * (lattice[ax1] + lattice[ax2]) / 2 +
-                                  ((i + 1) % 2) * i / 2 * lattice[ax2])
+                                  (i %2) * (i - 1)/2 * lattice[ax2] + (i %2) * (lattice[ax1] + lattice[ax2]) / 2 + # These terms are non-zero in the BCC rows (odd i)
+                                  ((i + 1) %2) * i / 2 * lattice[ax2])                                             # This term is non-zero in the SC rows (even i)
                     
                     if i % 2 == 1: # proper bcc nodes
                         
@@ -284,7 +286,10 @@ def create_nodes(structure=None, origin=None, lattice=None, size=None, dim=None,
                         
                     elif i % 2 == 0: # regular simple cubic nodes
                         
-                        new_nodes = transl_copy(start_node, lattice[ax1],  size[ax1] + 1,  axis=ax1)
+                        new_nodes = transl_copy(start_node,
+                                                lattice[ax1],
+                                                size[ax1] + 1, # The +1 is needed because size[ax1] is the number of *unit cells* in the ax1 direction.
+                                                axis=ax1)
                         
                     nodes = np.vstack((nodes, new_nodes))
                     
@@ -292,11 +297,11 @@ def create_nodes(structure=None, origin=None, lattice=None, size=None, dim=None,
                     
                 nodes_sc = np.delete(nodes, nodes_bcc_ind, axis=0)
                 
-                return nodes, (nodes_sc, nodes_bcc)
+                return nodes, nodes_sc, nodes_bcc
                 
             elif dim == 3:
             
-                # First sheet:
+                # The rest of the lattice will be build on top of this first sheet:
                 
                 nodes = transl_copy(transl_copy(origin,
                                                 lattice[0], size[0] + 1, axis=0),
@@ -320,9 +325,8 @@ def create_nodes(structure=None, origin=None, lattice=None, size=None, dim=None,
                     
                     
                     start_node = (origin +
-                                  (i % 2) * (i - 1) / 2 * lattice[2] +
-                                  (i % 2) * (lattice[0] + lattice[1] + lattice[2]) / 2 +
-                                  ((i + 1) % 2) * i / 2 * lattice[2])
+                                  (i %2) * (i - 1)/2 * lattice[ax2] + (i %2) * (lattice[ax1] + lattice[ax2]) / 2 + # These terms are non-zero in the BCC rows (odd i)
+                                  ((i + 1) %2) * i / 2 * lattice[ax2])                                             # This term is non-zero in the SC rows (even i)
                     
                     if i % 2 == 1: # proper bcc nodes
                         
@@ -335,8 +339,12 @@ def create_nodes(structure=None, origin=None, lattice=None, size=None, dim=None,
                     elif i % 2 == 0: # regular simple cubic nodes
                         
                         new_nodes = transl_copy(transl_copy(start_node,
-                                                              lattice[0],  size[0] + 1,  axis=0),
-                                                lattice[1],  size[1] + 1,  axis=1)
+                                                            lattice[0],
+                                                            size[0] + 1,  # The +1 is needed because size[0] is the number of *unit cells* in the 0 direction.
+                                                            axis=0),
+                                                lattice[1],
+                                                size[1] + 1,  # The +1 is needed because size[1] is the number of *unit cells* in the 1 direction.
+                                                axis=1)
                         
                     nodes = np.vstack((nodes, new_nodes))
                                     
@@ -386,7 +394,46 @@ def create_nodes(structure=None, origin=None, lattice=None, size=None, dim=None,
             
             if dim == 2:
                 
-                pass
+                # We follow the procedure laid out for the 2D BCC lattice, but we make the following pattern instead:
+                #
+                #   i = 4  ax2 = 2   * * * * * * * * * * *  <-- close-packed row
+                #   i = 3            *   *   *   *   *   *  <-- sparse row
+                #   i = 2  ax2 = 1   * * * * * * * * * * *  <-- close-packed row
+                #   i = 1            *   *   *   *   *   *  <-- sparse row
+                #          ax2 = 0   * * * * * * * * * * *  <-- bottom line
+            
+                ax1 = (axis + 1) % 3
+                ax2 = (axis + 2) % 3
+                
+                # 'axis' is the index (0, 1 or 2) of the Cartesian axis perpendicular to which lies the 2D lattice, so
+                # ax1 and ax2 define the plane on which lies the 2D lattice
+                
+                nodes = np.empty((0,3))
+                
+                for i in range(0, size[ax2] * 2 + 1): # Need the +1 bc range() is exclusive at the top value
+                    
+                    start_node = (origin + i/2 * lattice[ax2])
+                    
+                    if i % 2 == 0: # rows with even i (close-packed rows)
+                        
+                        new_nodes = transl_copy(start_node,
+                                                lattice[ax1] / 2, 
+                                                (size[ax1] + 1) * 2 - 1,
+                                                axis=ax1)
+                                                
+                    elif i % 2 == 1: # rows with odd i (sparse rows)
+                        
+                        new_nodes = transl_copy(start_node,
+                                                lattice[ax1], 
+                                                size[ax1] + 1, # The +1 is needed because size[ax1] is the number of *unit cells* in the ax1 direction.
+                                                axis=ax1)
+                        
+                    nodes = np.vstack((nodes, new_nodes))
+                    
+                nodes_bcc_ind = find_equal_rows(nodes, nodes_bcc)[:,0]
+                    
+                nodes_sc = np.delete(nodes, nodes_bcc_ind, axis=0)
+
             
             elif dim == 3:
             
@@ -434,7 +481,7 @@ def create_nodes(structure=None, origin=None, lattice=None, size=None, dim=None,
 
     except:
         
-        print("\nWARNING: Something went wrong with the function create_nodes().\n")
+        print("\nWARNING: Something went wrong with the function build.create_nodes().\n")
 
 
 
@@ -1262,5 +1309,151 @@ def create_volumes(lattice, structure, cells_0D=None, cells_2D=None):
         
         print("\nSomething went wrong with the function create_volumes().\n")
 
+
+
+
+def build_complex(struc, size, lattice=[[1,0,0],[0,1,0],[0,0,1]], dim=3, extras=False):
+    """
+    Parameters
+    ----------
+    struc : str
+        A descriptor of the basic structure of the lattice.
+    size : list
+        Lists the number of unit cells in each spatial coordinate.
+    lattice : np array OR list (3x3 or 2x3), optional
+        An array of vectors describing the periodicity of the lattice in the 3 canonical directions. The default is [[1,0,0],[0,1,0],[0,0,1]].
+    dim : int, optional
+        The dimension of the space. The default is 3.
+    extras: bool
+        Whether to output extra information about the topology of the cell complex. The default is False.
+        
+
+    Returns
+    -------
+    The nodes, edges, faces and volumes (and other optional topological information) of a discrete cell complex which reproduces the slip planes of
+    the "struc" crystal structure (simple cubic, FCC, BCC).
+    
+    Notes
+    -------
+    standard call:
+nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size)
+    
+    """
+    
+    if type(lattice) == list:
+        
+        lattice = np.array(lattice)
+
+    first_u_cell = np.array([[0,0,0]]) + np.sum(lattice, axis=0) / 2
+
+
+    if struc == 'simple cubic':
+        
+        #------- NODES in SC
+
+        first_node = first_u_cell - np.sum(lattice, axis=0) / 2
+        
+        nodes = create_nodes(structure = struc,
+                             origin = first_node,
+                             lattice = lattice,
+                             size = size,
+                             dim = dim)
+        
+        #------- EDGES in SC
+        
+        edges = find_neighbours(nodes, lattice, structure = struc, dim = dim)
+                            
+        #------- FACES in SC
+        
+        faces = create_faces(edges, structure = struc)
+        
+        faces_slip = faces
+                
+        #------- VOLUMES in SC
+        
+        volumes = create_volumes(lattice, struc, cells_0D = nodes)
+        
+        
+        
+    elif struc == 'bcc':
+        
+        #------- NODES in BCC
+
+        first_node = first_u_cell - np.sum(lattice, axis=0) / 2
+        
+        nodes, (nodes_sc, nodes_bcc, nodes_virtual) = create_nodes(structure = struc,
+                                                                   origin = first_node,
+                                                                   lattice = lattice,
+                                                                   size = size,
+                                                                   dim = dim,
+                                                                   axis = 2)
+        
+        #------- EDGES in BCC
+        
+        edges, edges_sc, edges_bcc, edges_virtual = find_neighbours(nodes,
+                                                                    lattice,
+                                                                    structure = struc,
+                                                                    dim = dim,
+                                                                    special_0D = (nodes[nodes_sc],
+                                                                                  nodes[nodes_bcc],
+                                                                                  nodes[nodes_virtual]))
+                                
+        #------- FACES in BCC
+        
+        faces, faces_sc = create_faces(edges, structure = struc, cells_0D = nodes)     
+        
+        faces_slip = np.array(list(range(len(faces))))
+        
+        faces_slip = list(np.delete(faces_slip, faces_sc))
+        
+        del faces_sc
+                    
+        #------- VOLUMES in BCC
+            
+        volumes = create_volumes(lattice, struc, cells_2D = faces)
+        
+
+        
+    elif struc == 'fcc':
+
+        #------- NODES in FCC
+                
+        first_node = first_u_cell - (lattice[0] + lattice[1] + lattice[2]) / 2
+
+        nodes, (nodes_sc, nodes_bcc, nodes_fcc) = create_nodes(structure = 'bcc',
+                                                               origin = first_node,
+                                                               lattice = lattice,
+                                                               size = size,
+                                                               dim = dim)
+        #------- EDGES in FCC
+
+        edges, edges_sc, edges_bcc_fcc, edges_fcc2, edges_fcc_sc = find_neighbours(nodes,
+                                                                                   lattice = lattice,
+                                                                                   structure = struc,
+                                                                                   dim = dim,
+                                                                                   special_0D = (nodes_sc, nodes_bcc, nodes_fcc))
+        
+        #------- FACES in FCC
+        
+        faces, faces_slip = create_faces(edges,
+                                         structure = struc,
+                                         cells_0D = (nodes, nodes_sc, nodes_bcc, nodes_fcc))
+                        
+        #------- VOLUMES in FCC
+        
+        volumes = create_volumes(lattice, struc, cells_2D = faces)
+        
+
+    if extras is False:
+        
+        return nodes, edges, faces, faces_slip, volumes
+    
+    elif extras is True and struc == 'bcc':
+        
+        return nodes, nodes_sc, nodes_bcc, nodes_virtual, edges, edges_sc, edges_bcc, edges_virtual, faces, faces_slip, volumes
+    
+    elif extras is True and struc == 'fcc':
+        
+        return nodes, nodes_sc, nodes_bcc, nodes_fcc, edges, edges_sc, edges_bcc_fcc, edges_fcc2, edges_fcc_sc, faces, faces_slip, volumes
 
 

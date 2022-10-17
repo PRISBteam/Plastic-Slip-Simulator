@@ -2,11 +2,30 @@
 """
 Created on Tue Jun 21 12:00 2022
 
-Last edited on: 12/07/2022 12:10
+Last edited on: 17/10/2022 16:55
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
-This module is part of the dccstructure package. In here you will find functions pertinent to the construction of the cell complex.
+This module is part of the dccstructure package. It is meant to be run from a command line/terminal in the directory of the
+dccstructure package. It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex
+with the parameters specified. It returns the nodes, edges, faces and volumes as well as other optional topological information.
+
+This file can be run with the command
+
+    python build_complex.py (+ arguments)
+
+Arguments that can be passed:
+    
+    Mandatory:
+        
+        --size int int int : specifies the number of unit cells in the directions x, y, z (default is 1 1 1);
+        --struc str : specifies the crystallographic structure of the complex;
+        
+    Optional:
+        
+        --dim int : specifies the dimension of the complex. The default is 3.
+        --basisv flt flt flt flt flt flt flt flt flt : specifies the 9 components of the 3 lattice basis vectors. The default is a unit vector in each canonical direction.
+        -e bool : if True, the code will output additional topological information. There is no extra topological information for the simple cubic structure. The default is False.
 
 """
 
@@ -19,184 +38,42 @@ import numpy as np
 
 import os
 
-directory = os.getcwd().split('/')
 
-if 'dccstructure' in directory:
-    
-    directory.remove('dccstructure')
-    
-    directory = '/'.join(str(i) for i in directory)
-    
-    os.chdir(directory)
-    
-    from dccstructure import build
-    from dccstructure.iofiles import write_to_file
-    
-    directory = os.path.join(directory, r'dccstructure')
-       
-    os.chdir(directory)
-    
-else:
-    
-    from dccstructure import build
-    from dccstructure.iofiles import write_to_file
-    
-del directory
-
-
-
-# ----- # ----- # FUNCTIONS # ------ # ----- #
-
-
-def build_complex(struc, size, lattice=[[1,0,0],[0,1,0],[0,0,1]], dim=3):
-    """
-    Parameters
-    ----------
-    struc : TYPE
-        DESCRIPTION.
-    size : TYPE
-        DESCRIPTION.
-    lattice : TYPE, optional
-        DESCRIPTION. The default is [[1,0,0],[0,1,0],[0,0,1]].
-    dim : TYPE, optional
-        DESCRIPTION. The default is 3.
-    d : TYPE, optional
-        DESCRIPTION. The default is False.
-    n : TYPE, optional
-        DESCRIPTION. The default is True.
-    s : TYPE, optional
-        DESCRIPTION. The default is True.
-    r : TYPE, optional
-        DESCRIPTION. The default is False.
-
-    Returns
-    -------
-    
-    
-    Notes
-    -------
-nodes, edges, faces, volumes = build_complex(struc, size, lattice=[[1,0,0],[0,1,0],[0,0,1]], dim=3)
-    
-    """
-    
-    if type(lattice) == list:
-        
-        lattice = np.array(lattice)
-
-    first_u_cell = np.array([[0,0,0]]) + np.sum(lattice, axis=0) / 2
-
-
-    if struc == 'simple cubic':
-        
-        #------- NODES in SC
-
-        first_node = first_u_cell - np.sum(lattice, axis=0) / 2
-        
-        nodes = build.create_nodes(structure = struc,
-                                   origin = first_node,
-                                   lattice = lattice,
-                                   size = size,
-                                   dim = dim)
-        
-        #------- EDGES in SC
-        
-        edges = build.find_neighbours(nodes, lattice, structure = struc, dim = dim)
-                            
-        #------- FACES in SC
-        
-        faces = build.create_faces(edges, structure = struc)
-                
-        #------- VOLUMES in SC
-        
-        volumes = build.create_volumes(lattice, struc, cells_0D = nodes)
-        
-        
-        
-    elif struc == 'bcc':
-        
-        #------- NODES in BCC
-
-        first_node = first_u_cell - np.sum(lattice, axis=0) / 2
-        
-        nodes, (nodes_sc, nodes_bcc, nodes_virtual) = build.create_nodes(structure = struc,
-                                                                         origin = first_node,
-                                                                         lattice = lattice,
-                                                                         size = size,
-                                                                         dim = dim,
-                                                                         axis = 2)
-        
-        #------- EDGES in BCC
-        
-        edges, (edges_sc, edges_bcc, edges_virtual) = build.find_neighbours(nodes,
-                                                                            lattice,
-                                                                            structure = struc,
-                                                                            dim = dim,
-                                                                            special_0D = (nodes[nodes_sc],
-                                                                                          nodes[nodes_bcc],
-                                                                                          nodes[nodes_virtual]))
-        
-        del edges_sc, edges_bcc, edges_virtual
-        
-                                
-        #------- FACES in BCC
-        
-        faces, faces_sc = build.create_faces(edges, structure = struc, cells_0D = nodes)        
-                    
-        #------- VOLUMES in BCC
-            
-        volumes = build.create_volumes(lattice, struc, cells_2D = faces)
-        
-
-        
-    elif struc == 'fcc':
-
-        #------- NODES in FCC
-                
-        first_node = first_u_cell - (lattice[0] + lattice[1] + lattice[2]) / 2
-
-        nodes, (nodes_sc, nodes_bcc, nodes_fcc) = build.create_nodes(structure = 'bcc',
-                                                                     origin = first_node,
-                                                                     lattice = lattice,
-                                                                     size = size,
-                                                                     dim = dim)
-        #------- EDGES in FCC
-
-        edges, edges_sc, edges_bcc_fcc, edges_fcc2, edges_fcc_sc = build.find_neighbours(nodes,
-                                                                                         lattice = lattice,
-                                                                                         structure = struc,
-                                                                                         dim = dim,
-                                                                                         special_0D = (nodes_sc, nodes_bcc, nodes_fcc))
-        
-        #------- FACES in FCC
-        
-        faces, faces_slip = build.create_faces(edges,
-                                               structure = struc,
-                                               cells_0D = (nodes, nodes_sc, nodes_bcc, nodes_fcc))
-                        
-        #------- VOLUMES in FCC
-        
-        volumes = build.create_volumes(lattice, struc, cells_2D = faces)
-        
-
-    return nodes, edges, faces, volumes
-
-
+# ----- # ----- # CODE # ------ # ----- #
 
 
 
 if __name__ == "__main__":
     
-    parser = argparse.ArgumentParser(description='Some description')
+    
+    
+    directory = os.getcwd().split('/')
 
-    parser.add_argument(
-        '--dim',
-        action ='store',
-        default = 3,
-        type = int,
-        choices = [2, 3],
-        required = True,
-        help = 'The spatial dimension of the complex (2 or 3).'
-    )
+    if 'dccstructure' in directory:
+        
+        directory.remove('dccstructure')
+        
+        directory = '/'.join(str(i) for i in directory)
+        
+        os.chdir(directory)
+        
+        import dccstructure.build as build
+        from dccstructure.iofiles import write_to_file
+        
+        directory = os.path.join(directory, r'dccstructure')
+           
+        os.chdir(directory)
+        
+    else:
+        
+        from dccstructure import build
+        from dccstructure.iofiles import write_to_file
+        
+    del directory
+
+    
+
+    parser = argparse.ArgumentParser(description='Some description')
 
     parser.add_argument(
         '--size',
@@ -219,6 +96,16 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
+        '--dim',
+        action ='store',
+        default = 3,
+        type = int,
+        choices = [2, 3],
+        required = False,
+        help = 'The spatial dimension of the complex (2 or 3).'
+    )
+    
+    parser.add_argument(
         '--basisv',
         action = 'store',
         nargs = 9,
@@ -229,39 +116,14 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
-        '-d',
+        '-e',
         action = 'store_true',
+        default = False,
         required = False,
-        help = "Whether to also output the node degree matrix."
-    )
-    
-    parser.add_argument(
-        '-n',
-        action = 'store_true',
-        required = False,
-        help = "Whether to also output the unit normal vectors to the 2-cells."
+        help = "Whether to output additional topological information about the cell complex."
     )
 
-    parser.add_argument(
-        '-a',
-        action = 'store_true',
-        required = False,
-        help = "Whether to also output the areas of 2-cells."
-    )
-
-    parser.add_argument(
-        '-s',
-        action = 'store_true',
-        required = False,
-        help = "Whether to also output the indices of the 2-cells corresponding to slip planes."
-    )
     
-    parser.add_argument(
-        '-r',
-        action = 'store_true',
-        required = False,
-        help = "Whether to also output the 'results.txt' file from iofiles.write_to_file()."
-    )
     
     # Sort out variables from the arguments
         
@@ -270,11 +132,7 @@ if __name__ == "__main__":
     DIM = args.dim
     STRUC = args.struc
     SIZE = args.size
-    degrees_yes = args.d
-    normals_yes = args.n
-    results_yes = args.r
-    areas_yes = args.a
-    slip_yes = args.s
+    extras_yes = args.e
     
     try:
         
@@ -285,20 +143,62 @@ if __name__ == "__main__":
         LATTICE[2,:] = args.basisv[[6,7,8]]
     
     except:
+        
         LATTICE = np.array([[1,0,0],[0,1,0],[0,0,1]]) ################
 
 
     # Build the complex
 
-    nodes, edges, faces, volumes = build_complex(struc = STRUC,
-                                                 size = SIZE,
-                                                 lattice = LATTICE,
-                                                 dim = DIM)
+    results = build.build_complex(struc = STRUC,
+                                  size = SIZE,
+                                  lattice = LATTICE,
+                                  dim = DIM,
+                                  extras = extras_yes)
+    
+    # Print the results into .txt files in a new folder
         
-    write_to_file(nodes, 'nodes',
-                  edges, 'edges',
-                  faces, 'faces',
-                  volumes, 'volumes',
-                  new_folder = True)
+    if extras_yes == False:
+        
+        nodes = results[0] ; edges = results[1] ; faces = results[2] ; faces_slip = results[3] ; volumes = results[4]
+        
+        write_to_file(nodes, 'nodes',
+                      edges, 'edges',
+                      faces, 'faces',
+                      faces_slip, 'faces_slip',
+                      volumes, 'volumes',
+                      new_folder = True)
+    
+    elif extras_yes == True and STRUC == 'bcc':
+        
+        write_to_file(results[0], 'nodes',
+                      results[1], 'nodes_sc',
+                      results[2], 'nodes_bcc',
+                      results[3], 'nodes_virtual',
+                      results[4], 'edges',
+                      results[5], 'edges_sc',
+                      results[6], 'edges_bcc',
+                      results[7], 'edges_virtual',
+                      results[8], 'faces',
+                      results[9], 'faces_slip',
+                      results[10], 'volumes',
+                      new_folder = True)
+        
+    elif extras_yes == True and STRUC == 'fcc':
+        
+        write_to_file(results[0], 'nodes',
+                      results[1], 'nodes_sc',
+                      results[2], 'nodes_bcc',
+                      results[3], 'nodes_fcc',
+                      results[4], 'edges',
+                      results[5], 'edges_sc',
+                      results[6], 'edges_bcc_fcc',
+                      results[7], 'edges_fcc2',
+                      results[8], 'edges_fcc_sc',
+                      results[9], 'faces',
+                      results[10], 'faces_slip',
+                      results[12], 'volumes',
+                      new_folder = True)
+
+
 
 
