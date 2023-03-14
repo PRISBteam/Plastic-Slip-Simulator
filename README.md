@@ -81,7 +81,6 @@ This module contains a (non-optimised and not as-of-yet user-friendly) function 
 
 1. The function build.find_neighbours() returns a TypeError for an asymmetrical BCC structure.
 2. The function visualisation.graph_complex() is currently unoperational, since it needs yet to be updated to the module-like version of the code (as it is written, it is still from the time when the whole code was written in a single .py file).
-3. There might be issues with importing modules from within the the package itself.
 
 
-Last updated on: 17 Oct 2022
+Last updated on: 14 March 2023
