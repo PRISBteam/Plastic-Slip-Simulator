@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jun 7 12:43 2022
+Created on Tue Oct 25 2022
 
-Last edited on: 12/07/2022 12:10
+Last edited on: 
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
-This module is part of the DCC_Structure package. In here you will find a function that creates a visualisation of the a complex.
+This module is part of the DCC_Structure package. In here you will find a function that creates a visualisation of the complex.
 
 """
 
@@ -15,18 +15,45 @@ This module is part of the DCC_Structure package. In here you will find a functi
 
 
 import numpy as np
+import matplotlib.pyplot as plt
 from itertools import combinations # to avoid nested for loops
+
+import os
+
+directory = os.getcwd().split('/')
+
+if 'dccstructure' in directory:
+    
+    directory.remove('dccstructure')
+    
+    directory = '/'.join(str(i) for i in directory)
+    
+    os.chdir(directory)
+    
+    from dccstructure.build import find_equal_rows
+    
+    directory = os.path.join(directory, r'dccstructure')
+       
+    os.chdir(directory)
+    
+else:
+    
+    from dccstructure.build import find_equal_rows
+    
+del directory
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #
 
 
-def graph_complex(structure, cells_0D, cells_1D=None, cells_2D=None, azimuth=8, text=True):
+def graph_complex(structure, size, cells_0D=None, cells_1D=None, cells_2D=None, chosen_faces=None, azimuth=8, text=True):
     """
     Parameters
     ----------
     structure : str, optional
         A descriptor of the basic structure of the lattice.
+    size: list
+        
     cells_0D : np array OR tuple of np arrays
         The spatial positions of points in 3D space.
     cells_1D : numpy array (M x 2) OR tuple of numpy arrays
@@ -41,7 +68,6 @@ def graph_complex(structure, cells_0D, cells_1D=None, cells_2D=None, azimuth=8, 
     Returns
     -------
     Plots the complex with or without edges/faces between the nodes and saves it as a .png file.
-
     """
     
     def alpha_param(full_array, part_array):
@@ -76,24 +102,23 @@ def graph_complex(structure, cells_0D, cells_1D=None, cells_2D=None, azimuth=8, 
             a = 1
         
         return a
-            
-
-    fig_name = STRUC + '_' + str(np.prod(SIZE))
+                
+    fig_name = structure + '_' + str(np.prod(size))
     
     f_size = (10, 10)
     
     plt.figure(figsize = f_size)
     
     ax = plt.axes(projection = '3d')
+    
+    ax.view_init(elev = 11, azim = azimuth)
         
     #---- SC ----#
     
     if structure == 'simple cubic':
                 
         # Plot nodes
-        
-        ax.view_init(elev = 15, azim = azimuth)
-                    
+                            
         ax.scatter3D(cells_0D[:,0], cells_0D[:,1], cells_0D[:,2], s = 70, c = 'black')
         
         if cells_1D != None:
@@ -104,7 +129,7 @@ def graph_complex(structure, cells_0D, cells_1D=None, cells_2D=None, azimuth=8, 
                 
                 edge = cells_0D[edge]
                 
-                ax.plot3D(edge[:,0], edge[:,1], edge[:,2], 'green', alpha = alpha_param(edges))
+                ax.plot3D(edge[:,0], edge[:,1], edge[:,2], 'green', alpha = alpha_param(cells_1D))
         
     #---- BCC ----#
     
@@ -114,16 +139,16 @@ def graph_complex(structure, cells_0D, cells_1D=None, cells_2D=None, azimuth=8, 
                       cells_1D = (edges, edges[edges_sc], edges[edges_bcc], edges[edges_virtual]) """
 
         # Plot nodes
-                
-        ax.view_init(elev = 11, azim = azimuth)
         
-        ax.scatter3D(cells_0D[1][:,0], cells_0D[1][:,1], cells_0D[1][:,2], s = 70, c = 'black')     # regular simple cubic nodes
-        ax.scatter3D(cells_0D[2][:,0], cells_0D[2][:,1], cells_0D[2][:,2], s = 70, c = 'cyan')      # proper bcc nodes
-        ax.scatter3D(cells_0D[3][:,0], cells_0D[3][:,1], cells_0D[3][:,2], s = 70, c = 'green')     # virtual fcc nodes
+        if cells_0D is not None:
+            
+            ax.scatter3D(cells_0D[1][:,0], cells_0D[1][:,1], cells_0D[1][:,2], s = 70, c = 'black')     # regular simple cubic nodes
+            ax.scatter3D(cells_0D[2][:,0], cells_0D[2][:,1], cells_0D[2][:,2], s = 70, c = 'cyan')      # proper bcc nodes
+            ax.scatter3D(cells_0D[3][:,0], cells_0D[3][:,1], cells_0D[3][:,2], s = 70, c = 'green')     # virtual fcc nodes
 
         # Plot edges
         
-        if cells_1D != None:
+        if cells_1D is not None:
             
             fig_name = fig_name + '_edges'
             
@@ -149,7 +174,7 @@ def graph_complex(structure, cells_0D, cells_1D=None, cells_2D=None, azimuth=8, 
         
         try:
             
-            if cells_2D.any() != None:
+            if cells_2D is not None:
             
                 tri = np.empty((0,3))
 
@@ -198,15 +223,15 @@ def graph_complex(structure, cells_0D, cells_1D=None, cells_2D=None, azimuth=8, 
 
         # Plot nodes
                 
-        ax.view_init(elev = 11, azim = azimuth)
-        
-        ax.scatter3D(cells_0D[1][:,0], cells_0D[1][:,1], cells_0D[1][:,2], s = 70, c = 'black')     # regular simple cubic nodes
-        ax.scatter3D(cells_0D[2][:,0], cells_0D[2][:,1], cells_0D[2][:,2], s = 70, c = 'cyan')      # proper bcc nodes
-        ax.scatter3D(cells_0D[3][:,0], cells_0D[3][:,1], cells_0D[3][:,2], s = 70, c = 'green')     # virtual fcc nodes
+        if cells_0D is not None:
+            
+            ax.scatter3D(cells_0D[1][:,0], cells_0D[1][:,1], cells_0D[1][:,2], s = 70, c = 'black')     # regular simple cubic nodes
+            ax.scatter3D(cells_0D[2][:,0], cells_0D[2][:,1], cells_0D[2][:,2], s = 70, c = 'cyan')      # proper bcc nodes
+            ax.scatter3D(cells_0D[3][:,0], cells_0D[3][:,1], cells_0D[3][:,2], s = 70, c = 'green')     # virtual fcc nodes
 
         # Plot edges
         
-        if cells_1D != None:
+        if cells_1D is not None:
             
             fig_name = fig_name + '_edges'
             
@@ -242,26 +267,30 @@ def graph_complex(structure, cells_0D, cells_1D=None, cells_2D=None, azimuth=8, 
             
             tri = np.empty((0,3))
             
-            chosen_faces = [33, 58, 56, 61, 21, 10, 17, 37]
+            if chosen_faces is None:
+                
+                pass
             
-            points = np.unique(cells_2D[chosen_faces])
-            
-            points = cells_0D[0][points]
+            else:
+                            
+                points = np.unique(cells_2D[chosen_faces])
+                
+                points = cells_0D[0][points]
+                                        
+                for face in chosen_faces:
+                    
+                    t = cells_0D[0][cells_2D[face]]
+                    
+                    t = find_equal_rows(points, t)[:,0]
+                    
+                    tri = np.vstack((tri, t))
+                    
+                # ls = LightSource(azdeg = 250, altdeg = 45) (need lightsource=ls below)
                                     
-            for face in chosen_faces:
-                
-                t = cells_0D[0][cells_2D[face]]
-                
-                t = find_equal_rows(points, t)[:,0]
-                
-                tri = np.vstack((tri, t))
-                
-            # ls = LightSource(azdeg = 250, altdeg = 45) (need lightsource=ls below)
-                                
-            ax.plot_trisurf(points[:,0], points[:,1], points[:,2],
-                            triangles = tri.astype(int),
-                            color='pink', edgecolor='purple', alpha=0.5, linewidth=3,
-                            shade=True)
+                ax.plot_trisurf(points[:,0], points[:,1], points[:,2],
+                                triangles = tri.astype(int),
+                                color='pink', edgecolor='purple', alpha=0.5, linewidth=3,
+                                shade=True)
                                         
         except:
             pass
@@ -304,6 +333,6 @@ def graph_complex(structure, cells_0D, cells_1D=None, cells_2D=None, azimuth=8, 
     plt.axis('off')
     
     fig_name = fig_name + '.png'
-    plt.savefig(fig_name, dpi=400)
+    plt.savefig(fig_name, dpi=600)
         
     plt.show()

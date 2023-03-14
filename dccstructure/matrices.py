@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jun 7 12:43 2022
+Created on Tue Oct 25 2022
 
-Last edited on: 17/10/2022 17:30
+Last edited on: Mar 14 11:20 2023
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -16,431 +16,447 @@ matrices, adjacency matrices, and other combinatorial forms, given a cell comple
 
 
 import numpy as np
-from itertools import combinations # to avoid nested for loops
+import time
+from functools import partial
 from scipy import sparse
+from pathlib import Path ; import os
+import multiprocessing as mp
 
-import os
+import sys
+sys.path.append('../')
 
-directory = os.getcwd().split('/')
-
-if 'dccstructure' in directory:
-    
-    directory.remove('dccstructure')
-    
-    directory = '/'.join(str(i) for i in directory)
-    
-    os.chdir(directory)
-    
-    from dccstructure.build import find_equal_rows
-    from dccstructure import orientations as dcco
-    
-    directory = os.path.join(directory, r'dccstructure')
-       
-    os.chdir(directory)
-    
-else:
-    
-    from dccstructure.build import find_equal_rows
-    from dccstructure import orientations as dcco
-    
-del directory
-
+from dccstructure.build import check_uniqueness
+from dccstructure.iofiles import write_to_file
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #
 
 
-def degree_distribution(cells_1D, cells_0D):
+def node_degree(index: int, cells1D: np.ndarray) -> int:
     """
     Parameters
     ----------
-    cells_1D : np array
+    index : int
+        The index of the node in the complex for which one wishes to find the degree.
+    cells1D : np array
         An array whose rows list the indices of nodes which make up one edge.
-    cells_0D : np array
-        An array whose rows list the coordinates of the nodes.
 
     Returns
     -------
     node_degrees : list
         A list containing the degree of each node; the index in the list corresponds to the index of the node..
     """
-    
-    node_degrees = []
-    
-    for i in range(0, np.shape(cells_0D)[0]):
+            
+    node_degree = np.count_nonzero(cells1D == index)
         
-        node_degrees.append(np.count_nonzero(cells_1D == i))
-        
-    return node_degrees
+    return node_degree
 
 
 
 
-def combinatorial_form(structure, degree, cells_3D, cells_2D, cells_1D, cells_0D, v2f=None, f2e=None):
+def adjacency_0cells(index: int, cells1D: np.ndarray) -> np.ndarray:
     """
     Parameters
     ----------
-    degree: int
-        The degree of the desired combinatorial form.
-    cells_3D : np array
-        An array whose rows list the indices of nodes which make up one volume.
-    cells_2D : np array
-        An array whose rows list the indices of nodes which make up one face.
-    cells_1D : np array
+    index : int
+        The index of the node in the complex for which one wishes to find the neighbouring nodes. A neighbouring node is defined as
+        one which is the other endpoint of an edge which is incident on the node 'index'.
+    cells1D : np array
         An array whose rows list the indices of nodes which make up one edge.
-    cells_0D : np array
+    
+    Returns
+    -------
+    An array with three columns: the first one lists 'index' repeatedly, the second one lists the adjacent nodes, the third one lists
+    the degree of adjacency (=1 for regular cell complexes).
+    """
+                
+    nbs = cells1D[np.where(cells1D == index)[0]] # selected rows of 'cells1D' containing node 'index'; "nbs" short for "neighbours"
+    
+    nbs = nbs[nbs != index] # 1D array of the neighbours of node 'index'
+    
+    # Now we need to put the information into the desired format.
+    
+    output = np.hstack((np.array([index] * len(nbs)).reshape((len(nbs), 1)),
+                        nbs.reshape((len(nbs), 1)),
+                        np.array([1] * len(nbs)).reshape((len(nbs), 1))))
+    
+    return output
+
+
+
+
+def adjacency_1cells(index: int, cells1D: np.ndarray) -> np.ndarray:
+    """
+    Parameters
+    ----------
+    index : int
+        The index of the edge in the complex for which one wishes to find the neighbouring edges. A neighbouring edge is defined as
+        one which shares at least one node with the edge 'index'.
+    cells1D : np array
+        An array whose rows list the indices of nodes which make up one edge.
+    
+    Returns
+    -------
+    An array with three columns: the first one lists 'index' repeatedly, the second one lists the adjacent edges, the third one lists
+    the degree of adjacency (=1 for regular cell complexes).
+    """
+                                            
+    # The neighbours of an edge are the edges with which it shares a border. So, we need to find its
+    # endpoints and then find which other edges are also incident on them.
+    
+    nbs = np.argwhere(cells1D == cells1D[index][0])[:,0] # edges incident on first endpoint; "nbs" short for "neighbours"
+    
+    nbs = np.hstack((nbs,
+                     np.argwhere(cells1D == cells1D[index][1])[:,0])) # adding the edges incident on second endpoint
+    
+    nbs = np.delete(nbs, np.argwhere(nbs == index)) # remove the current edge: obtain list of neighbours by edge index
+                                                
+    # Now we need to put the information into the desired format.
+    
+    output = np.hstack((np.array([index] * len(nbs)).reshape((len(nbs), 1)),
+                        nbs.reshape((len(nbs), 1)),
+                        np.array([1] * len(nbs)).reshape((len(nbs), 1))))
+    
+    return output
+
+
+
+
+def adjacency_2cells(index: int, faces_to_edges: np.ndarray) -> np.ndarray:
+    """
+    Parameters
+    ----------
+    index : int
+        The index of the face in the complex for which one wishes to find the neighbouring faces. A neighbouring face is defined as
+        one which shares at least one edge with the face 'index'.
+    faces_to_edges : np array
+        An array whose row indices correspond to face indices and which, for each face, lists the indices of the edges on its boundary.
+        
+    Notes
+    -----
+    The array passed to 'faces_to_edges' must contain only positive integers.
+    
+    Returns
+    -------
+    An array with three columns: the first one lists 'index' repeatedly, the second one lists the adjacent faces, the third one lists
+    the degree of adjacency (=1 for regular cell complexes).
+    """
+
+    # The neighbours of a face are the faces with which it shares a border. So, we need to find its
+    # constituent edges and then find which other faces also contain those edges.
+    
+    faces_to_edges = np.copy(np.abs(faces_to_edges))
+    
+    nbs = np.argwhere(faces_to_edges == faces_to_edges[index][0])[:,0] # faces incident on first edge; "nbs" short for "neighbours"
+    
+    for k in range(1, np.size(faces_to_edges[index])): # for each edge in the face
+        
+        nbs = np.hstack((nbs,
+                         np.argwhere(faces_to_edges == faces_to_edges[index][k])[:,0])) # faces incident on remaining edges
+    
+    nbs = np.delete(nbs, np.argwhere(nbs == index)) # remove the current face: obtain list of neighbours by face index
+                                                
+    # Now we need to put the information into the desired format.
+    
+    output = np.hstack((np.array([index] * len(nbs)).reshape((len(nbs), 1)),
+                        nbs.reshape((len(nbs), 1)),
+                        np.array([1] * len(nbs)).reshape((len(nbs), 1))))
+    
+    return output
+
+
+
+
+def adjacency_3cells(index: int, volumes_to_faces: np.ndarray) -> np.ndarray:
+    """
+    Parameters
+    ----------
+    index : int
+        The index of the volume in the complex for which one wishes to find the neighbouring volumes. A neighbouring volume is
+        defined as one which shares at least one face with the volume 'index'.
+    volumes_to_faces : np array
+        An array whose row indices correspond to volume indices and which, for each volume, lists the indices of the faces on its
+        boundary.
+        
+    Notes
+    -----
+    The array passed to 'volumes_to_faces' must contain only positive integers.
+    
+    Returns
+    -------
+    An array with three columns: the first one lists 'index' repeatedly, the second one lists the adjacent faces, the third one lists
+    the degree of adjacency (=1 for regular cell complexes).
+    """
+    
+    # The neighbours of a volume are the volumes with which it shares a border. So, picking a volume, we need to find its
+    # constituent faces and then find which other volumes also contain those faces.
+    
+    # Take the first listed face in the boundary of the volume 'index'.
+    
+    volumes_to_faces = np.copy(np.abs(volumes_to_faces))
+    
+    nbs = np.argwhere(volumes_to_faces == volumes_to_faces[index][0])[:,0] # volumes incident on first face; "nbs" short for "neighbours"
+    
+    # Then consider the remaining faces.
+    
+    for k in range(1, np.size(volumes_to_faces[index])): # for every remaining face in the volume
+        
+        nbs = np.hstack((nbs,
+                         np.argwhere(volumes_to_faces == volumes_to_faces[index][k])[:,0])) # faces incident on remaining edges
+    
+    nbs = np.delete(nbs, np.argwhere(nbs == index)) # remove the current face: obtain list of neighbours by face index
+            
+    # Now we need to put the information into the desired format.
+    
+    output = np.hstack((np.array([index] * len(nbs)).reshape((len(nbs), 1)),
+                        nbs.reshape((len(nbs), 1)),
+                        np.array([1] * len(nbs)).reshape((len(nbs), 1))))
+    
+    return output
+
+
+
+
+def incidence_1cells(cell: tuple) -> np.ndarray:
+    """
+    Parameters
+    ----------
+    cell : tuple (index, edge)
+        An ordered pair whose first value is the index of the edge in the complex for which one wishes to find the nodes on which
+        it is incident and whose second element is an array listing the indices of NODES which make up the EDGE, WITHOUT
+        considerations for relative orientations.
+        
+    Returns
+    -------
+    A list of the indices of the nodes on which 'edge' is incident.
+    """
+    
+    # The array edge aready carries information about which nodes the cell is incident on, so we only need to give it orientation
+    # considerations and put the information into the desired format.
+    
+    # We define an edge-node pair to be coherently oriented if the edge points away from the node.
+    
+    nodes = np.hstack((cell[1].reshape((len(cell[1]),1)), np.array([[1],[-1]])))
+                
+    # Now we need to put the information into the desired format.
+    
+    output = np.hstack((np.array([cell[0]] * len(nodes)).reshape((len(nodes), 1)),
+                        nodes))
+    
+    return output
+
+
+
+
+def incidence_2cells(cell: tuple) -> np.ndarray:
+    """
+    Parameters
+    ----------
+    cell : tuple (index, face_as_edge)
+        An ordered pair whose first value is the index of the face in the complex for which one wishes to find the edges on which
+        it is incident and whose second element is an array listing the indices of EDGES which make up the FACE, WITH considerations
+        for relative orientations.
+        
+    Returns
+    -------
+    A list of the indices of the edges on which 'face' is incident.
+    """
+    
+    # The array face aready carries information about which nodes the cell is incident on, so we only need to give it orientation
+    # considerations and put the information into the desired format.
+    
+    output = np.empty((0,3))
+    
+    for edge in cell[1]:
+        
+        row = np.array([[cell[0], np.abs(edge), np.sign(edge)]])
+        
+        # We have to consider the fact that 'edge' might be 0, in which case np.sign(0) = 0 but we would want a 1 there.
+        
+        if row[0,2] == 0: row[0,2] = 1
+        
+        output = np.vstack((output, row))
+    
+    return output.astype(int)
+
+
+
+
+def incidence_3cells(cell: tuple) -> np.ndarray:
+    """
+    Parameters
+    ----------
+    cell : tuple (index, volume_as_face)
+        An ordered pair whose first value is the index of the volume in the complex for which one wishes to find the faces on which
+        it is incident and whose second element is an array listing the indices of FACES which make up the VOLUME, WITH considerations
+        for relative orientations.
+        
+    Returns
+    -------
+    A list of the indices of the faces on which 'volume' is incident.
+    """
+    
+    # The array face aready carries information about which nodes the cell is incident on, so we only need to give it orientation
+    # considerations and put the information into the desired format.
+    
+    output = np.empty((0,3))
+    
+    for face in cell[1]:
+        
+        row = np.array([[cell[0], np.abs(face), np.sign(face)]])
+        
+        # We have to consider the fact that 'face' might be 0, in which case np.sign(0) = 0 but we would want a 1 there.
+        
+        if row[0,2] == 0: row[0,2] = 1
+        
+        output = np.vstack((output, row))
+    
+    return output.astype(int)
+
+
+
+
+def get_matrices(cells0D: np.ndarray,
+                 cells1D: np.ndarray,
+                 cells2D: np.ndarray,
+                 cells3D: np.ndarray,
+                 faces_to_edges: np.ndarray,
+                 volumes_to_faces: np.ndarray):
+    """
+    This function summarises the entire "matrices" part of the DCCStructure package.
+    This function takes in the complex data (nodes, edges, faces, volumes) as well as data on the relative orientations (faces_to_edges,
+    volumes_as_faces) and returns the adjacency matrices of degrees 0, 1, 2 and 3, the adjacency matrices of degrees 1, 2 and 3, as well
+    as a list of the node degrees by node index.
+    
+    Parameters
+    ----------
+    cells0D : np array
         An array whose rows list the coordinates of the nodes.
-    v2f : np array
-        An array whose rows list the indices of faces which make up one volume, with considerations for relative orientation.
-        The default value (=None) should be kept if you want the function to calculate both v2f and f2e, otherwise you should
-        pass your own v2f and f2e arrays.
-    f2e : np array
-        An array whose rows list the indices of edges which make up one face, with considerations for relative orientation.
-        The default value (=None) should be kept if you want the function to calculate both v2f and f2e, otherwise you should
-        pass your own v2f and f2e arrays.
+    cells1D : np array
+        An array whose rows list the indices of nodes which make up one edge.
+    cells2D : np array
+        An array whose rows list the indices of nodes which make up one face.
+    cells3D : np array
+        
+    faces_to_edges : np array
+        An array whose row indices correspond to face indices and which, for each face, lists the indices of the edges on its boundary.
+    volumes_to_faces : np array
+        An array whose row indices correspond to volume indices and which, for each volume, lists the indices of the faces on its
+        boundary.
 
     Returns
     -------
-    For degrees 0 and 1 (adjacency and incidence matrices), returns a numpy array (N x 3) which gives the relevant matrix in
-    explicit sparse format, that is, the first column refers to the row index, the second column to the column index and the
-    third column to the element value.
-    For degrees 2 and 3, returns the same as above but in a sparse.csc_matrix() format.
+    The adjacency matrices of degrees 0, 1, 2 and 3, the adjacency matrices of degrees 1, 2 and 3, as well as a list of the node
+    degrees by node index.
     """
-            
-    e2n = cells_1D * [1, -1] # this defines the relative orientation between edges and nodes, where an edge-node pair is considered
-                             # to be positively relatively oriented if the edge points away from the node.
-                             
-    if v2f is None and f2e is None:
-        
-        v2f = dcco.volumes_to_faces(cells_3D, cells_2D)
-        
-        f2e = dcco.faces_to_edges(cells_2D, cells_1D)
-        
-        v2f, f2e = dcco.find_relative_orientations(cells_3D, cells_2D, cells_1D, cells_0D, v2f, f2e)
 
-
-    """ DEGREE 0 """
     
-    if degree == 0:
-        
-        # In this case, the combinatorial form could simply be the identity form, but it is more interesting to make it so
-        # that it also works as an adjacency matrix; that is, the combinatorial form of degree 0 acting on a p-cell C returns
-        # the p-cells D,E,F,... that are adjacent to (*share a border with*) C.
-        
-        ### --- NODES --------------------
-        
-        # Of course, nodes have no border, so instead in this case we define the "neighbours" as nodes that have the same
-        # incident edges.
-        
-        rows_0 = []; cols_0 = []; values_0 = []
-        
-        for i in range(0, np.shape(cells_0D)[0]): # for each indexed node
-            
-            nbs = cells_1D[np.where(cells_1D == i)[0]] # selected rows of 'cells_1D' containing i; "nbs" short for "neighbours"
-            
-            nbs = nbs[nbs != i] # 1D array of the neighbours of 'i'
-                                        
-            cols_0.extend(list(nbs)) # the cols correspond to the nodes
-            
-            rows_0.extend([i] * np.size(nbs)) # the rows correspond to the neighbour nodes
-
-            values_0.extend([1] * len(nbs))
-            
-        comb_form_0 = np.hstack(( np.transpose(np.array([rows_0])),
-                                  np.transpose(np.array([cols_0])),
-                                  np.transpose(np.array([values_0])) ))
-        
-        comb_form_0 = comb_form_0[comb_form_0[:,2].argsort()]                 # sort by values (col 2)
-        comb_form_0 = comb_form_0[comb_form_0[:,1].argsort(kind='mergesort')] # sort by cols (col 1)
-        comb_form_0 = comb_form_0[comb_form_0[:,0].argsort(kind='mergesort')] # sort by rows (col 0)
-
-        
-        ### --- EDGES --------------------
-        
-        rows_1 = []; cols_1 = []; values_1 = []
-                    
-        for i in range(0, np.shape(cells_1D)[0]): # for each indexed edge
-        
-            # The neighbours of an edge are the edges with which it shares a border. So, picking an edge, we need to find its
-            # endpoints and then find which other edges are also incident on them.
-            
-            nbs = np.argwhere(cells_1D == cells_1D[i][0])[:,0] # edges incident on first endpoint; "nbs" short for "neighbours"
-            
-            nbs = np.hstack((nbs,
-                             np.argwhere(cells_1D == cells_1D[i][1])[:,0])) # edges incident on second endpoint
-            
-            nbs = np.delete(nbs, np.argwhere(nbs == i)) # remove the current edge: obtain list of neighbours by edge index
-            
-            rows_1.extend([i] * np.size(nbs))
-            
-            cols_1.extend(list(nbs))
-        
-            values_1.extend([1] * len(nbs))        
-                    
-        comb_form_1 = np.hstack(( np.transpose(np.array([rows_1])),
-                                  np.transpose(np.array([cols_1])),
-                                  np.transpose(np.array([values_1])) ))
-        
-        comb_form_1 = comb_form_1[comb_form_1[:,2].argsort()]                 # sort by values (col 2)
-        comb_form_1 = comb_form_1[comb_form_1[:,1].argsort(kind='mergesort')] # sort by cols (col 1)
-        comb_form_1 = comb_form_1[comb_form_1[:,0].argsort(kind='mergesort')] # sort by rows (col 0)
-        
-        ### --- FACES --------------------
-
-        rows_2 = []; cols_2 = []; values_2 = []
-
-        for i in range(0, np.shape(cells_2D)[0]): # for each indexed face
-        
-            # The neighbours of a face are the faces with which it shares a border. So, picking a face, we need to find its
-            # constituent edges and then find which other faces also contain those edges.
-                            
-            nbs = np.argwhere(f2e == f2e[i][0])[:,0] # faces incident on first edge; "nbs" short for "neighbours"
-            
-            for k in range(1, np.size(f2e[i])): # for each edge in the face
-                
-                nbs = np.hstack((nbs,
-                                 np.argwhere(f2e == f2e[i][k])[:,0])) # faces incident on remaining edges
-            
-            nbs = np.delete(nbs, np.argwhere(nbs == i)) # remove the current face: obtain list of neighbours by face index
-            
-            rows_2.extend([i] * np.size(nbs))
-            
-            cols_2.extend(list(nbs))
-
-            values_2.extend([1] * len(nbs))        
-        
-        comb_form_2 = np.hstack(( np.transpose(np.array([rows_2])),
-                                  np.transpose(np.array([cols_2])),
-                                  np.transpose(np.array([values_2])) ))
-        
-        comb_form_2 = comb_form_2[comb_form_2[:,2].argsort()]                 # sort by values (col 3)
-        comb_form_2 = comb_form_2[comb_form_2[:,1].argsort(kind='mergesort')] # sort by cols (col 1)
-        comb_form_2 = comb_form_2[comb_form_2[:,0].argsort(kind='mergesort')] # sort by rows (col 0)
-        
-        ### --- VOLUMES --------------------
-        
-        rows_3 = []; cols_3 = []; values_3 = []
-
-        for i in range(0, np.shape(cells_3D)[0]): # for each indexed volume
-        
-        # The neighbours of a volume are the volumes with which it shares a border. So, picking a volume, we need to find its
-        # constituent faces and then find which other volumes also contain those faces.
-                        
-            nbs = np.argwhere(abs(v2f) == abs(v2f[i][0]))[:,0] # volumes incident on first face; "nbs" short for "neighbours"
-            
-            for k in range(1, np.size(v2f[i])): # for every other face in the volume
-                
-                nbs = np.hstack((nbs,
-                                 np.argwhere(abs(v2f) == abs(v2f[i][k]))[:,0])) # faces incident on remaining edges
-            
-            nbs = np.delete(nbs, np.argwhere(nbs == i)) # remove the current face: obtain list of neighbours by face index
-            
-            rows_3.extend([i] * np.size(nbs))
-            
-            cols_3.extend(list(nbs))
-
-            values_3.extend([1] * len(nbs))
-        
-        comb_form_3 = np.hstack(( np.transpose(np.array([rows_3])),
-                                  np.transpose(np.array([cols_3])),
-                                  np.transpose(np.array([values_3])) ))
-        
-        comb_form_3 = comb_form_3[comb_form_3[:,2].argsort()]                 # sort by values (col 2)
-        comb_form_3 = comb_form_3[comb_form_3[:,1].argsort(kind='mergesort')] # sort by cols (col 1)
-        comb_form_3 = comb_form_3[comb_form_3[:,0].argsort(kind='mergesort')] # sort by rows (col 0)
-        
-        
-        combinatorial_form = [comb_form_0, comb_form_1, comb_form_2, comb_form_3]
+    A0 = [] ; A1 = [] ; A2 = [] ; A3 = [] ; B1 = [] ; B2 = [] ; B3 = []
     
-
-
-
-    """ DEGREE 1 """
+    part_A0 = partial(adjacency_0cells, cells1D = cells1D)
+    part_A1 = partial(adjacency_1cells, cells1D = cells1D)
+    part_A2 = partial(adjacency_2cells, faces_to_edges = np.abs(faces_to_edges))
+    part_A3 = partial(adjacency_3cells, volumes_to_faces = np.abs(volumes_to_faces))
     
-    if degree == 1:
-        
-        ### --- NODES --------------------
-        
-        # This is a trivial case, as nodes are the least-dimensional cells. The combinatorial form is a matrix of zeros, so to
-        # save space we're not going to define it.
-        
-        ### --- EDGES --------------------
-        
-        # This matrix transforms edges into their constituent nodes, taking into account relative orientations. The rows correspond
-        # to node indices and the columns correspond to edge indices.
-                
-        cols_1 = list(range(0, np.shape(cells_1D)[0])) * 2 # There are 2 nodes per edge
-        cols_1.sort()
-        
-        rows_1 = list(cells_1D.flatten()) # The array cells_1D already carries information about incidence
-        
-        values_1 = np.sign(e2n.flatten()) # The array e2n already carries information about relative orientations
-        
-        values_1[np.argwhere(values_1 == 0)] = 1
-        
-        comb_form_1 = np.hstack(( np.transpose(np.array([rows_1])),
-                                  np.transpose(np.array([cols_1])),
-                                  np.transpose(np.array([values_1])) ))
-        
-        comb_form_1 = comb_form_1[comb_form_1[:,2].argsort()]                 # sort by alues (col 2)
-        comb_form_1 = comb_form_1[comb_form_1[:,1].argsort(kind='mergesort')] # sort by cols (col 1)
-        comb_form_1 = comb_form_1[comb_form_1[:,0].argsort(kind='mergesort')] # sort by rows (col 0)
-        
-        ### --- FACES --------------------
-        
-        # This matrix transforms faces into their constituent edges, taking into account relative orientations. The rows correspond
-        # to edges and the columns correspond to faces.
-                
-        cols_2 = list(range(0, np.shape(cells_2D)[0])) * np.shape(f2e)[1]
-        cols_2.sort()
-        
-        rows_2 = list(abs(f2e).flatten())
-        
-        values_2 = np.sign(f2e.flatten())
-        
-        values_2[np.argwhere(values_2 == 0)] = 1
-        
-        comb_form_2 = np.hstack(( np.transpose(np.array([rows_2])),
-                                  np.transpose(np.array([cols_2])),
-                                  np.transpose(np.array([values_2])) ))
-        
-        comb_form_2 = comb_form_2[comb_form_2[:,2].argsort()]                 # sort by values (col 2)
-        comb_form_2 = comb_form_2[comb_form_2[:,1].argsort(kind='mergesort')] # sort by cols (col 1)
-        comb_form_2 = comb_form_2[comb_form_2[:,0].argsort(kind='mergesort')] # sort by rows (col 0)
-        
-        ### --- VOLUMES --------------------
-        
-        # This matrix transforms volumes into their constituent faces, taking into account relative orientations. The rows correspond
-        # to faces and the columns correspond to volumes.
-                
-        cols_3 = list(range(0, np.shape(cells_3D)[0])) * np.shape(v2f)[1]
-        cols_3.sort()
-        
-        rows_3 = list(abs(v2f).flatten())
-        
-        values_3 = np.sign(v2f.flatten())
-        
-        values_3[np.argwhere(values_3 == 0)] = 1
-        
-        comb_form_3 = np.hstack(( np.transpose(np.array([rows_3])),
-                                  np.transpose(np.array([cols_3])),
-                                  np.transpose(np.array([values_3])) ))
-        
-        comb_form_3 = comb_form_3[comb_form_3[:,2].argsort()]                 # sort by values (col 2)
-        comb_form_3 = comb_form_3[comb_form_3[:,1].argsort(kind='mergesort')] # sort by cols (col 1)
-        comb_form_3 = comb_form_3[comb_form_3[:,0].argsort(kind='mergesort')] # sort by rows (col 0)
-        
-        combinatorial_form = [0, comb_form_1, comb_form_2, comb_form_3]
-
-
-
-
-    """ DEGREE 2 """
+    part_B1 = partial(incidence_1cells)
+    part_B2 = partial(incidence_2cells)
+    part_B3 = partial(incidence_3cells)
     
-    if degree == 2:
-        
-        ### --- NODES --------------------
-        
-        # This is a trivial case, as nodes are the least-dimensional cells. The combinatorial form is a matrix of zeros, so to
-        # save space we're not even going to define it.
-        
-        ### --- EDGES --------------------
-        
-        # This is a trivial case, as there are no (1 - 2)-dimensional cells. The combinatorial form is a matrix of zeros, so to
-        # save space we're not even going to define it.
-        
-        ### --- FACES --------------------
-        
-        # This matrix transforms faces into their constituent nodes, taking into account relative orientations. The rows correspond
-        # to nodes and the columns correspond to faces.
-                
-        cols_2 = list(range(0, np.shape(cells_2D)[0])) * np.shape(cells_2D)[1]
-        cols_2.sort()
-        
-        rows_2 = list(cells_2D.flatten())
-        
-        values_2 = [1] * np.size(cells_2D)
-        
-        comb_form_2 = sparse.csc_matrix((values_2, (rows_2, cols_2)),
-                                        shape = (np.size(cells_0D[:,0]), np.size(cells_2D[:,0])))
-        
-        ### --- VOLUMES --------------------
-        
-        # This matrix transforms volumes into their constituent edges, taking into account relative orientations. The rows correspond
-        # to edges and the columns correspond to volumes.
-        
-        if (structure == 'bcc' or structure == 'fcc'):
-            
-            v2e = np.empty((0,6)) # Need to find which edges constitute which volumes.
-            
-        elif structure == 'simple cubic':
-            
-            v2e = np.empty((0,12)) # Need to find which edges constitute which volumes.
-        
-        for volume in cells_3D:
-            
-            pairs = np.sort(np.array([i for i in combinations(volume, 2)])) # These represent possible edges in the selected volume
-            
-            true_pairs = find_equal_rows(cells_1D, pairs).astype(int)
-            
-            edges_in_volume = np.sort(true_pairs[:,0]) # Gives indices of edges that constitute the volume
-            
-            v2e = np.vstack((v2e, edges_in_volume)).astype(int)
-        
-        cols_3 = list(range(0, np.shape(cells_3D)[0])) * np.shape(v2e)[1]
-        cols_3.sort()
-        
-        rows_3 = list(v2e.flatten())
-        
-        values_3 = [1] * np.size(v2e)
-                
-        comb_form_3 = sparse.csc_matrix((values_3, (rows_3, cols_3)),
-                                        shape = (np.size(cells_1D[:,0]), np.size(cells_3D[:,0])))
-        
-        combinatorial_form = [0, 0, comb_form_2, comb_form_3]
-
-
-
-    """ DEGREE 3 """
+    status = []
     
-    if degree == 3:
+    """ --- ADJACENCY MATRICES --- """
+    
+    print("\n\\\\--- 1. Assembling adjacency matrices ---//\n")
+    
+    t0 = time.time()
+    
+    with mp.Pool() as pool:
+        for result in pool.map(part_A0, list(range(len(cells0D))), chunksize = int(len(cells0D)/os.cpu_count())):
+            A0.extend(result)
         
-        ### --- NODES --------------------
+    with mp.Pool() as pool:
+        for result in pool.map(part_A1, list(range(len(cells1D))), chunksize = int(len(cells1D)/os.cpu_count())):
+            A1.extend(result)
+            
+    with mp.Pool() as pool:
+        for result in pool.map(part_A2, list(range(len(cells2D))), chunksize = int(len(cells2D)/os.cpu_count())):
+            A2.extend(result)
+    
+    with mp.Pool() as pool:
+        for result in pool.map(part_A3, list(range(len(cells3D))), chunksize = int(len(cells3D)/os.cpu_count())):
+            A3.extend(result)
+            
+    print(f"Time elapsed: {time.time() - t0} s.\n")
+    
+    del pool, result, t0
         
-        # This is a trivial case, as nodes are the least-dimensional cells. The combinatorial form is a matrix of zeros, so to
-        # save space we're not even going to define it.
-        
-        ### --- EDGES --------------------
-        
-        # This is a trivial case, as there are no (1 - 3)-dimensional cells. The combinatorial form is a matrix of zeros, so to
-        # save space we're not even going to define it.
-        
-        ### --- FACES --------------------
-        
-        # This is a trivial case, as there are no (2 - 3)-dimensional cells. The combinatorial form is a matrix of zeros, so to
-        # save space we're not even going to define it.
-        
-        ### --- VOLUMES --------------------
-        
-        # This matrix transforms volumes into their constituent nodes. The rows correspond to nodes and the columns correspond
-        # to volumes.
+    """ --- INCIDENCE MATRICES --- """
+    
+    print("\\\\--- 2. Assembling incidence matrices ---//\n")
+    
+    t0 = time.time()
+    
+    cells = []
+    for i in range(len(cells1D)): 
+        cells.append([i, cells1D[i]])
+    
+    with mp.Pool() as pool:
+        for result in pool.map(part_B1, cells, chunksize = int(len(cells)/os.cpu_count())):
+            B1.extend(result)
+    
+    cells = []
+    for i in range(len(faces_to_edges)):
+        cells.append([i, faces_to_edges[i]])
+    
+    with mp.Pool() as pool:
+        for result in pool.map(part_B2, cells, chunksize = int(len(cells)/os.cpu_count())):
+            B2.extend(result)
+            
+    cells = []
+    for i in range(len(volumes_to_faces)):
+        cells.append([i, volumes_to_faces[i]])
+            
+    with mp.Pool() as pool:
+        for result in pool.map(part_B3, cells, chunksize = int(len(cells)/os.cpu_count())):
+            B3.extend(result)
                 
-        cols_3 = list(range(0, np.shape(cells_3D)[0])) * np.shape(cells_3D)[1]
-        cols_3.sort()
+    print(f"Time elapsed: {time.time() - t0} s.\n")
+    
+    del cells, pool, result, t0
+    
+    A0 = np.array(A0)
+    A1 = np.array(A1)
+    A2 = np.array(A2)
+    A3 = np.array(A3)
+    B1 = np.array(B1)
+    B2 = np.array(B2)
+    B3 = np.array(B3)
+    
+    status = [check_uniqueness(A0),
+              check_uniqueness(A1),
+              check_uniqueness(A2),
+              check_uniqueness(A3),
+              check_uniqueness(B1),
+              check_uniqueness(B2),
+              check_uniqueness(B3)]
+    
+    if np.all(status):
         
-        rows_3 = list(cells_3D.flatten())
+        print('-> SUCCESS!\n')
+        status.append(True)
         
-        values_3 = [1] * np.size(cells_3D)
+    else:
         
-        comb_form_3 = sparse.csc_matrix((values_3, (rows_3, cols_3)),
-                                        shape = (np.size(cells_0D[:,0]), np.size(cells_3D[:,0])))
+        matrices = np.array(['A0','A1','A2','A3','B1','B2','B3'])
+        matrices = np.delete(matrices, status)
+        print(f'The matrices {matrices} did not compute correctly.\n')
+        print('-> FAILURE!\n')
         
-        combinatorial_form = [0, 0, 0, comb_form_3]
-
+    node_degrees = []
+    for j in range(len(cells0D)):
+        node_degrees.append(node_degree(j, cells1D))
         
-    return combinatorial_form
-
-
+    return A0, A1, A2, A3, B1, B2, B3, node_degrees
 
 
 def convert_to_cscmatrix(array):
@@ -459,3 +475,134 @@ def convert_to_cscmatrix(array):
     
     return sparse_m
 
+
+
+
+
+"""
+----------------------------------------------------------------------------------------------------------------------------
+"""
+
+
+
+# def import_complex_data(data_folder: Path):
+#     """
+#     Parameters
+#     ----------
+#     data_folder : str
+#         The path name of the folder where the data files are located.
+
+#     Returns
+#     -------
+#     np.array
+#         Extracts information about the complex from the data files in data_folder.
+#     """
+
+#     # Import cell complex data files
+            
+#     #directory = os.getcwd() # str type
+            
+#     #os.chdir(data_folder)
+    
+#     data = []
+                
+#     if (data_folder / 'nodes.txt').is_file():
+                    
+#         with open(data_folder / 'nodes.txt') as file:
+#             nodes = np.genfromtxt(file, delimiter = ' ')
+            
+#         data.append(nodes)
+    
+#     if (data_folder / 'edges.txt').is_file():
+                    
+#         with open(data_folder / 'edges.txt') as file:
+#             edges = np.genfromtxt(file, delimiter = ' ').astype(int)
+            
+#         data.append(edges)
+
+#     if (data_folder / 'faces.txt').is_file(): 
+                    
+#         with open(data_folder / 'faces.txt') as file:
+#             faces = np.genfromtxt(file, delimiter = ' ').astype(int)
+            
+#         data.append(faces)
+                
+#     if (data_folder / 'faces_slip.txt'):
+                    
+#         with open(data_folder / 'faces_slip.txt') as file:
+#             faces_slip = list(np.genfromtxt(file, delimiter = ' ').astype(int))
+            
+#         data.append(faces_slip)
+        
+#     if (data_folder / 'volumes.txt').is_file():
+                    
+#         with open(data_folder / 'volumes.txt') as file:
+#             volumes = np.genfromtxt(file, delimiter = ' ').astype(int)
+            
+#         data.append(volumes)
+        
+#     if (data_folder / 'nr_cells.txt'):
+                    
+#         with open(data_folder / 'nr_cells.txt') as file:
+#             nr_cells = list(np.genfromtxt(file, delimiter = ' ').astype(int))
+            
+#         data.append(nr_cells)
+        
+#     if (data_folder / 'volumes_to_faces.txt'):
+                    
+#         with open(data_folder / 'volumes_to_faces.txt') as file:
+#             v2f = np.genfromtxt(file, delimiter = ' ').astype(int)
+            
+#         data.append(v2f)
+        
+#     if (data_folder / 'faces_to_edges.txt'):
+                    
+#         with open(data_folder / 'faces_to_edges.txt') as file:
+#             f2e = np.genfromtxt(file, delimiter = ' ').astype(int)
+            
+#         data.append(f2e)
+    
+#     return data
+
+
+
+# if __name__ == '__main__':
+    
+#     struc = 'bcc'
+#     size = [13,13,13]
+#     lattice = np.array([[1,0,0], [0,1,0], [0,0,1]])
+#     origin = np.array([0,0,0])
+#     multi = True
+    
+    # # Access the data folder
+    
+    # cwd = os.getcwd()
+    # data_folder = Path(cwd)
+    # data_folder = data_folder.parent
+    # data_folder = data_folder / "Built Complexes"
+    
+    # if struc == 'bcc':
+    #     data_folder = data_folder / "BCC_13x13x13"
+        
+    # elif struc == 'fcc':
+    #     data_folder = data_folder / "FCC_13x13x13"
+    
+    # del cwd
+    
+    # # Retrieve the data
+    
+    # nodes, edges, faces, faces_slip, volumes, nr_cells, v2f, f2e = import_complex_data(data_folder)
+    
+    # # Process the data
+    
+#     A0, A1, A2, A3, B1, B2, B3, node_degrees = get_matrices(nodes, edges, faces, volumes, f2e, v2f)
+    
+#     write_to_file(A0, 'A0',
+#                   A1, 'A1',
+#                   A2, 'A2',
+#                   A3, 'A3',
+#                   B1, 'B1',
+#                   B2, 'B2',
+#                   B3, 'B3',
+#                   node_degrees, 'node_degrees',
+#                   new_folder = True)

@@ -2,7 +2,7 @@
 """
 Created on Mon Jun 20 15:14 2022
 
-Last edited on: 28/06/2022 15:45
+Last edited on: Mar 14 11:20 2023
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -21,7 +21,7 @@ import numpy as np
 # ----- # ----- # FUNCTIONS # ------ # ----- #
 
 
-def unit_normal(points):
+def unit_normal(points: np.ndarray):
     """
     Parameters
     ----------
@@ -32,35 +32,51 @@ def unit_normal(points):
     -------
     The unit normal vector of the plane defined by the points.
     """
-    
+        
     # We take two vectors that point along two edges of a face and find their vector cross product. We define the orientation of
     # a face as corresponding to this vector.
     
-    v1 = points[1] - points[0]
-    v2 = points[2] - points[0]
+    shape = np.shape(points)
     
-    normal = np.cross(v1, v2)
+    if len(shape) == 2:
+        
+        v1 = points[1] - points[0]
+        v2 = points[2] - points[0]
+        
+        normal = np.cross(v1, v2)
+        
+        normal = normal / np.linalg.norm(normal)
     
-    # Now we just get the unit normal by dividing it by its length.
-    
-    normal = normal / np.linalg.norm(normal)
+    elif len(shape) == 3:
+        
+        normal = np.empty((0,3))
+        
+        for i in range(len(points)):
+            
+            v1 = points[i,1,:] - points[i,0,:]
+            v2 = points[i,2,:] - points[i,0,:]
+            
+            x_prod = np.cross(v1, v2)
+            
+            x_prod = x_prod / np.linalg.norm(x_prod)
+            
+            normal = np.vstack((normal, x_prod))
     
     return normal
 
 
 
-def vector_angle(vector1, vector2):
+def vector_angle(vector1: np.ndarray, vector2: np.ndarray):
     """
     Parameters
     ----------
-    vector1 : TYPE
-        DESCRIPTION.
-    vector2 : TYPE
-        DESCRIPTION.
+    vector1 : np array
+    vector2 : np array
+
 
     Returns
     -------
-    None.
+    The angle between two vetors in Cartesian coordinates.
     """
     
     unit_vectors = [vector1 / np.linalg.norm(vector1) , vector2 / np.linalg.norm(vector2)]
@@ -73,7 +89,7 @@ def vector_angle(vector1, vector2):
 
 
 
-def polygon_area(points):
+def polygon_area(points: np.ndarray):
     """
     Parameters
     ----------
@@ -111,7 +127,7 @@ def polygon_area(points):
 
 
 
-def tetrahedron_volume(points):
+def tetrahedron_volume(points: np.ndarray):
     """
     Parameters
     ----------
@@ -134,7 +150,7 @@ def tetrahedron_volume(points):
     return volume
 
 
-def geo_measure(cell):
+def geo_measure(cell: np.ndarray):
     """
     Parameters
     ----------
@@ -166,7 +182,7 @@ def geo_measure(cell):
 
 
 
-def angle_measure(cell_d, node, cells_0D):
+def angle_measure(cell_d: np.ndarray, node: int, cells0D: np.ndarray):
     """
     Parameters
     ----------
@@ -174,7 +190,7 @@ def angle_measure(cell_d, node, cells_0D):
         A listing of the indices of the constituent nodes of a top-dimensional cell in the complex.
     node : int
         The index of a node in the discrete complex.
-    cells_0D: np array (N x 3)
+    cells0D: np array (N x 3)
         A numpy array whose rows list the spatial coordinates of points.
 
     Returns
@@ -188,13 +204,13 @@ def angle_measure(cell_d, node, cells_0D):
     
     if node not in cell_d:
         
-        raise ValueError("\nWhen calling the function geometry.angle_measure(cell_d, node, cells_0D), the node must be a constituent node of cell_d.\n")
+        raise ValueError("\nWhen calling the function geometry.angle_measure(cell_d, node, cells0D), the node must be a constituent node of cell_d.\n")
         
     other_nodes = np.delete(cell_d, np.argwhere(cell_d == node))
             
-    v1 = cells_0D[other_nodes[0]] - cells_0D[node]
-    v2 = cells_0D[other_nodes[1]] - cells_0D[node]
-    v3 = cells_0D[other_nodes[2]] - cells_0D[node]
+    v1 = cells0D[other_nodes[0]] - cells0D[node]
+    v2 = cells0D[other_nodes[1]] - cells0D[node]
+    v3 = cells0D[other_nodes[2]] - cells0D[node]
 
     angle1 = vector_angle(v2, v3)
     angle2 = vector_angle(v1, v3)

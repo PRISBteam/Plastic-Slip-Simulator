@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jun 7 12:43 2022
+Created on Tue Oct 25 2022
 
-Last edited on: 30/06/2022 13:20
+Last edited on: Mar 14 11:20 2023
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -110,6 +110,105 @@ def write_to_file(*args, new_folder = True, results=False):
                 ft = '%1.8f'
             
             np.savetxt(file_name, args[i], fmt = ft, delimiter = ' ', comments = '# ')
+
+
+
+
+def import_complex_data(data_folder):
+    """
+    Parameters
+    ----------
+    data_folder : str
+        The path name of the folder where the data files are located.
+
+    Returns
+    -------
+    np.array
+        Extracts information about the complex from the data files in data_folder.
+    """
+
+    # Import cell complex data files
+            
+    directory = os.getcwd() # str type
+            
+    os.chdir(data_folder)
+    
+    if os.path.isfile('./A0.txt') or os.path.isfile('.\\A0.txt'):
+            
+        with open('A0.txt') as file:
+            
+            A0 = np.genfromtxt(file, delimiter = ' ')
+    
+    if os.path.isfile('./A1.txt') or os.path.isfile('.\\A1.txt'):
+
+        with open('A1.txt') as file:
+    
+            A1 = np.genfromtxt(file, delimiter = ' ')
+    
+    if os.path.isfile('./A2.txt') or os.path.isfile('.\\A2.txt'):
+
+        with open('A2.txt') as file:
+            
+            A2 = np.genfromtxt(file, delimiter = ' ')
+        
+    if os.path.isfile('./A3.txt') or os.path.isfile('.\\A3.txt'):
+        
+        with open('A3.txt') as file:
+            
+            A3 = np.genfromtxt(file, delimiter = ' ')
+        
+    if os.path.isfile('./B1.txt') or os.path.isfile('.\\B1.txt'):
+            
+        with open('B1.txt') as file:
+            
+            B1 = np.genfromtxt(file, delimiter = ' ')
+            
+    if os.path.isfile('./B2.txt') or os.path.isfile('.\\B2.txt'):
+            
+        with open('B2.txt') as file:
+            
+            B2 = np.genfromtxt(file, delimiter = ' ')
+            
+    if os.path.isfile('./B3.txt') or os.path.isfile('.\\B3.txt'):
+            
+        with open('B3.txt') as file:
+            
+            B3 = np.genfromtxt(file, delimiter = ' ')
+            
+    if os.path.isfile('./faces_areas.txt') or os.path.isfile('.\\faces_areas.txt'):
+            
+        with open('faces_areas.txt') as file:
+            
+            faces_areas = np.genfromtxt(file, delimiter = ' ')
+            
+    if os.path.isfile('./faces_slip.txt') or os.path.isfile('.\\faces_slip.txt'):
+            
+        with open('faces_slip.txt') as file:
+            
+            faces_slip = np.genfromtxt(file, delimiter = ' ')
+            
+    if os.path.isfile('./node_degrees.txt') or os.path.isfile('.\\node_degrees.txt'):
+            
+        with open('node_degrees.txt') as file:
+            
+            node_degrees = np.genfromtxt(file, delimiter = ' ')
+            
+    if os.path.isfile('./normals.txt') or os.path.isfile('.\\normals.txt'):
+            
+        with open('normals.txt') as file:
+            
+            faces_normals = np.genfromtxt(file, delimiter = ' ')
+            
+    # if os.path.isfile('./number_of_cells.txt') or os.path.isfile('.\\number_of_cells.txt'):
+            
+    #     with open('number_of_cells.txt') as file:
+            
+    #         nr_cells = np.genfromtxt(file, delimiter = ' ')
+              
+    os.chdir(directory)
+    
+    return A0.astype(int), A1.astype(int), A2.astype(int), A3.astype(int), B1.astype(int), B2.astype(int), B3.astype(int), faces_areas, list(faces_slip.astype(int)), list(node_degrees.astype(int)), faces_normals #, list(nr_cells.astype(int))
+
 
 
 

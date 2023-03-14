@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jun 21 12:00 2022
+Created on Tue Oct 25 2022
 
-Last edited on: 17/10/2022 16:55
+Last edited on: Mar 14 11:20 2023
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -12,7 +12,7 @@ with the parameters specified. It returns the nodes, edges, faces and volumes as
 
 This file can be run with the command
 
-    python build_complex.py (+ arguments)
+    python build_complex_mp.py (+ arguments)
 
 Arguments that can be passed:
     
@@ -25,7 +25,8 @@ Arguments that can be passed:
         
         --dim int : specifies the dimension of the complex. The default is 3.
         --basisv flt flt flt flt flt flt flt flt flt : specifies the 9 components of the 3 lattice basis vectors. The default is a unit vector in each canonical direction.
-        -e bool : if True, the code will output additional topological information. There is no extra topological information for the simple cubic structure. The default is False.
+        --mp bool : if True, the code will run with Python's multiprocessing package, i.e. paralellisation of operations.
+        -e bool : if True, the code will output additional geometric information. There is no extra information for the simple cubic structure. The default is False.
 
 """
 
@@ -35,8 +36,15 @@ Arguments that can be passed:
 
 import argparse
 import numpy as np
+import multiprocessing as mp
 
-import os
+import sys
+sys.path.append('../')
+
+import dccstructure_mp.build as build
+from dccstructure_mp.orientations import get_orientations
+from dccstructure_mp.geometry import unit_normal, geo_measure
+from dccstructure_mp.iofiles import write_to_file
 
 
 # ----- # ----- # CODE # ------ # ----- #
@@ -44,33 +52,6 @@ import os
 
 
 if __name__ == "__main__":
-    
-    
-    
-    directory = os.getcwd().split('/')
-
-    if 'dccstructure' in directory:
-        
-        directory.remove('dccstructure')
-        
-        directory = '/'.join(str(i) for i in directory)
-        
-        os.chdir(directory)
-        
-        import dccstructure.build as build
-        from dccstructure.iofiles import write_to_file
-        
-        directory = os.path.join(directory, r'dccstructure')
-           
-        os.chdir(directory)
-        
-    else:
-        
-        from dccstructure import build
-        from dccstructure.iofiles import write_to_file
-        
-    del directory
-
     
 
     parser = argparse.ArgumentParser(description='Some description')
@@ -116,11 +97,18 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
+        '--mp',
+        action = 'store_true',
+        required = False,
+        help = "If True, employs Python's multiprocessing package to parallelise operations and speed up processing."
+    )
+    
+    parser.add_argument(
         '-e',
         action = 'store_true',
         default = False,
         required = False,
-        help = "Whether to output additional topological information about the cell complex."
+        help = "Whether to output additional geometrical information about the cell complex."
     )
 
     
@@ -132,6 +120,7 @@ if __name__ == "__main__":
     DIM = args.dim
     STRUC = args.struc
     SIZE = args.size
+    MULT = args.mp
     extras_yes = args.e
     
     try:
@@ -144,61 +133,67 @@ if __name__ == "__main__":
     
     except:
         
-        LATTICE = np.array([[1,0,0],[0,1,0],[0,0,1]]) ################
-
+        LATTICE = np.array([[1,0,0],[0,1,0],[0,0,1]])
+        print('-> Due to error in parsing argument, the lattice basis vectors have been changed to [1,0,0], [0,1,0] and [0,0,1].')
 
     # Build the complex
+    
+    with mp.Pool() as pool:
 
-    results = build.build_complex(struc = STRUC,
-                                  size = SIZE,
-                                  lattice = LATTICE,
-                                  dim = DIM,
-                                  extras = extras_yes)
+        results = build.build_complex(struc = STRUC,
+                                      size = SIZE,
+                                      lattice = LATTICE,
+                                      dim = DIM,
+                                      multiprocess = MULT)
+    
+    nodes = results[0] ; edges = results[1] ; faces = results[2] ; faces_slip = results[3] ; volumes = results[4]
+    
+    # Define relative orientations
+    
+    v2f, f2e = get_orientations(cells0D = nodes,
+                                cells1D = edges,
+                                cells2D = faces,
+                                cells3D = volumes,
+                                faces_per_volume = 4,
+                                edges_per_face = 3)    
     
     # Print the results into .txt files in a new folder
-        
+    
     if extras_yes == False:
-        
-        nodes = results[0] ; edges = results[1] ; faces = results[2] ; faces_slip = results[3] ; volumes = results[4]
-        
         write_to_file(nodes, 'nodes',
                       edges, 'edges',
                       faces, 'faces',
                       faces_slip, 'faces_slip',
                       volumes, 'volumes',
+                      f2e, 'faces_to_edges',
+                      v2f, 'volumes_to_faces',
                       new_folder = True)
     
-    elif extras_yes == True and STRUC == 'bcc':
+    elif extras_yes == True:
         
-        write_to_file(results[0], 'nodes',
-                      results[1], 'nodes_sc',
-                      results[2], 'nodes_bcc',
-                      results[3], 'nodes_virtual',
-                      results[4], 'edges',
-                      results[5], 'edges_sc',
-                      results[6], 'edges_bcc',
-                      results[7], 'edges_virtual',
-                      results[8], 'faces',
-                      results[9], 'faces_slip',
-                      results[10], 'volumes',
-                      new_folder = True)
+        normals = []
         
-    elif extras_yes == True and STRUC == 'fcc':
+        with mp.Pool() as pool:
+            
+            for result in pool.imap(unit_normal, nodes[faces]):
+                
+                normals.append(result)
+                
+        write_to_file(normals, 'normals', new_folder = False)
         
-        write_to_file(results[0], 'nodes',
-                      results[1], 'nodes_sc',
-                      results[2], 'nodes_bcc',
-                      results[3], 'nodes_fcc',
-                      results[4], 'edges',
-                      results[5], 'edges_sc',
-                      results[6], 'edges_bcc_fcc',
-                      results[7], 'edges_fcc2',
-                      results[8], 'edges_fcc_sc',
-                      results[9], 'faces',
-                      results[10], 'faces_slip',
-                      results[12], 'volumes',
-                      new_folder = True)
-
+        del normals
+        
+        areas = []
+        
+        with mp.Pool() as pool:
+            
+            for result in pool.imap(geo_measure, nodes[faces]):
+                
+                areas.append(result)
+                
+        write_to_file(areas, 'faces_areas', new_folder = False)
+        
+        del areas
 
 
 
