@@ -1,22 +1,32 @@
 # DCC_Structure_Generator
 
-The package DCC_Structure contains Python modules to build a discrete cell complex (DCC) based on the slip planes of crystal nanostructures (simple cubic, FCC, BCC; HCP not yet available). The script **__main__.py** is a summarised execution of the whole package. It takes as input:
-- the dimension of the complex: pass the argument as an int 2 or 3. The code should work fine for 2 dimensions but this has not been thoroughly tested;
-- the desired structure: pass the argument as a str 'simple cubic', 'fcc', 'bcc', or 'hcp' (not yet available);
-- the number of unit cells in each direction: pass the argument as three ints X Y Z. Here, a 'unit cell' is a volume bounded by 8 simple cubic-like vertices, and it is the division of this unit cell (or not, for simple cubic) into particular combinations of tetrahedra that makes the specified structure. For example, a bcc unit cell in this case has 24 tetrahedral 3-cells;
-- the lattice basis vectors: pass the argument as nine ints a1, a2, a3, b1, b2, b3, c1, c2, c3. These are the vectors between corners of the unit cell as explained above. A complex with non-orthogonal basis vectors has not been tested;
-- whether or not to also output the node degree matrix;
-- whether or not to also output the unit normal vectors to 2-cells;
-- whether or not to also output the areas of the 2-cells;
-- whether or not to also output the indices of the 2-cells corresponding to slip planes;
-- whether or not to also output the 'results.txt' file as described in the function iofiles.write_to_file().
+The package DCC_Structure contains Python modules to build a discrete cell complex (DCC) based on the slip planes of crystal nanostructures (simple cubic, FCC, BCC; HCP not yet available).
 
 ## Modules
 
-### \_\_main\_\_.py
+### run.py
 
-This module is meant to be run from a command line/terminal in the directory containing the dccstructure package. It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex with the parameters specified. It returns the adjacency and incidence matrices of the complex, as well as other topological and geometrical information (optional arguments). In the directory containing the dccstructure package, this file can be run with the command
-    python -m dccstructure (+ arguments)
+The script **run.py** is a summarised execution of the whole package. It takes the following input arguments on a terminal/command line:
+
+    Mandatory:
+        
+        --size int int int : specifies the number of unit cells in the directions x, y, z (default is 1 1 1);
+        --struc str : specifies the crystallographic structure of the complex;
+        
+    Optional:
+        
+        --dim int : specifies the dimension of the complex (default is 3);
+        --basisv flt flt flt flt flt flt flt flt flt : specifies the 9 components of the 3 lattice basis vectors;
+        --mp bool : if True, the code will run with Python's multiprocessing package, i.e. paralellisation of operations;
+        -d bool : if True, the code will output the node degrees;
+        -n bool : if True, the code will output the unit normals to the 2-cells;
+        -a bool : if True, the code will output the areas of the 2-cells;
+        -s bool : if True, the code will output the indices of 2-cells corresponding to slip planes.
+        
+This module is meant to be run from a command line/terminal in the dccstructure directory. It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex with the parameters specified by the arguments above. It returns the adjacency and incidence matrices of the complex, as well as other topological and geometrical information (optional arguments). In the directory of the dccstructure package, this file can be run with the command
+```diff
++    python run.py (+ arguments)
+```
 
 ### build.py
 
