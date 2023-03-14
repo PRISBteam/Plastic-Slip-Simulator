@@ -8,20 +8,20 @@ The package DCC_Structure contains Python modules to build a discrete cell compl
 
 The script **run.py** is a summarised execution of the whole package. It takes the following input arguments on a terminal/command line:
 
-    Mandatory:
-        
-        --size int int int : specifies the number of unit cells in the directions x, y, z (default is 1 1 1);
-        --struc str : specifies the crystallographic structure of the complex;
-        
-    Optional:
-        
-        --dim int : specifies the dimension of the complex (default is 3);
-        --basisv flt flt flt flt flt flt flt flt flt : specifies the 9 components of the 3 lattice basis vectors;
-        --mp bool : if True, the code will run with Python's multiprocessing package, i.e. paralellisation of operations. This will not work if all of the complex dimensions (as passed to --size) are smaller than the number of available CPUs;
-        -d bool : if True, the code will output the node degrees;
-        -n bool : if True, the code will output the unit normals to the 2-cells;
-        -a bool : if True, the code will output the areas of the 2-cells;
-        -s bool : if True, the code will output the indices of 2-cells corresponding to slip planes.
+Mandatory:
+
+    --size int int int : specifies the number of unit cells in the directions x, y, z (default is 1 1 1);
+    --struc str : specifies the crystallographic structure of the complex;
+
+Optional:
+
+    --dim int : specifies the dimension of the complex (default is 3);
+    --basisv flt flt flt flt flt flt flt flt flt : specifies the 9 components of the 3 lattice basis vectors;
+    --mp bool : if True, the code will run with Python's multiprocessing package, i.e. paralellisation of operations. This will not work if all of the complex dimensions (as passed to --size) are smaller than the number of available CPUs;
+    -d bool : if True, the code will output the node degrees;
+    -n bool : if True, the code will output the unit normals to the 2-cells;
+    -a bool : if True, the code will output the areas of the 2-cells;
+    -s bool : if True, the code will output the indices of 2-cells corresponding to slip planes.
         
 This module is meant to be run from a command line/terminal in the dccstructure directory (*i.e.* inside the dccstructure folder). It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex with the parameters specified by the arguments above. It returns the adjacency and incidence matrices of the complex, as well as other topological and geometrical information (optional arguments). This file can be run from a terminal with the following command (ignore the + sign at the start and remove the angular brackets):
 ```diff
