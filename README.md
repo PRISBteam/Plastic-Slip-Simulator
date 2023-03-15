@@ -1,4 +1,4 @@
-# DCC_Structure_Generator
+# PCC_Discrete_Plasticity
 
 The package DCC_Structure contains Python modules to build a discrete cell complex (DCC) based on the slip planes of crystal nanostructures (simple cubic, FCC, BCC; HCP not yet available).
 
