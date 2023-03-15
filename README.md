@@ -83,4 +83,14 @@ This module contains a (non-optimised and not as-of-yet user-friendly) function 
 2. The function visualisation.graph_complex() is currently unoperational, since it needs yet to be updated to the module-like version of the code (as it is written, it is still from the time when the whole code was written in a single .py file).
 
 
+## Acknowledgements
+
+This code has been created as a part of the EPSRC funded projects EP/V022687/1 _“Patterns recognition inside shear bands: tailoring microstructure against localisation”_ (PRISB).
+
+
+## License
+
+Distributed under the GNU General Public License v3.0.
+
+
 Last updated on: 14 March 2023
