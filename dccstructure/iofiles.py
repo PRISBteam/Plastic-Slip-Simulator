@@ -2,7 +2,7 @@
 """
 Created on Tue Oct 25 2022
 
-Last edited on: Mar 14 11:20 2023
+Last edited on: Mar 13 17:40 2024
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -17,12 +17,12 @@ files in one go.
 
 import numpy as np
 import os
-
+from pathlib import Path
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #
 
 
-def write_to_file(*args, new_folder = True, results=False):
+def write_to_file(*args, out_name = r'd_output', new_folder = True):
     """
     Parameters
     ----------
@@ -37,54 +37,18 @@ def write_to_file(*args, new_folder = True, results=False):
     -------
     Several .txt files with the input *args written on them.
     """
-    
-    # This function will create one .txt file with the *args cleanly presented on it, easy for a human to read (if passed results=True),
-    # as well as other files, with the *args more messily printed on them, but such that they are easier to read with another
-    # Python script, for example.
-    
+        
     if new_folder:
     
         current_directory = os.getcwd()
             
-        final_directory = os.path.join(current_directory, r'dccstructure_output')
+        final_directory = os.path.join(current_directory, out_name)
         
         if not os.path.exists(final_directory):
-            
-           os.makedirs(final_directory)
+            os.makedirs(final_directory)
            
         os.chdir(final_directory)
        
-    # First file.
-    
-    if results == True:
-    
-        with open('results.txt', 'w') as f1:
-                
-            for i in range(0, len(args)):
-                
-                # The point of the *args is that each i%2 == 0 is some variable np.array and each i%2 == 1 is a str, detailing the
-                # name of the preceding variable.
-    
-                if i %2 == 0:
-                    
-                    for row in args[i]:
-                        
-                        if np.all(row == args[i][0]): # first line
-                            
-                            f1.write(str(args[i + 1]) + ' = np.array([' + str(row) + ',\n')
-                                                                        
-                        elif np.all(row == args[i][-1]): # last line
-                            
-                            f1.write(' ' * (len(args[i + 1]) + 13) + str(row) + '])\n\n')
-                            
-                        else:
-                            
-                            f1.write(' ' * (len(args[i + 1]) + 13) + str(row) + ',\n')
-                            
-                else:
-                    pass
-            
-    # Other files.
     
     for i in range(0, len(args)):
         
@@ -94,19 +58,40 @@ def write_to_file(*args, new_folder = True, results=False):
         if i %2 == 0:
             
             file_name = args[i+1] + '.txt'
-            
-            ft = '%i'
+                        
+            # if the input variable is a 2D array of floats 
+            if type(args[i]) == np.ndarray and type(args[i][0,0]) in [np.float64, np.float32]:
                 
-            if type(args[i]) == np.ndarray and len(np.shape(args[i])) == 2 and type(args[i][0,0]) == np.float64:
+                ft = '%1.8f'
+                
+            # if the input variable is a 2D array of integers
+            if type(args[i]) == np.ndarray and type(args[i][0,0]) in [np.int64, np.int32]:
+                
+                ft = '%i'
+            
+            # if the input variable is a 1D array of floats 
+            if type(args[i]) == np.ndarray and type(args[i][0]) in [np.float64, np.float32]:
                 
                 ft = '%1.8f'
                 
-            if type(args[i]) == np.ndarray and len(np.shape(args[i])) == 1 and type(args[i][0,0]) == np.float64:
+            # if the input variable is a 1D array of integers
+            if type(args[i]) == np.ndarray and type(args[i][0]) in [np.int64, np.int32]:
+                
+                ft = '%i'
+                
+            # if the input variable is a list of floats
+            elif type(args[i]) == list and type(args[i][0]) == float:
                 
                 ft = '%1.8f'
             
-            if type(args[i]) == list and type(args[i][0]) == float:
+            # if the input variable is a list of integers
+            elif type(args[i]) == list and type(args[i][0]) == int:
                 
+                ft = '%i'
+
+            # if the input variable is a list of arrays
+            elif type(args[i]) == list and type(args[i][0]) == np.ndarray:
+            
                 ft = '%1.8f'
             
             np.savetxt(file_name, args[i], fmt = ft, delimiter = ' ', comments = '# ')
@@ -114,100 +99,105 @@ def write_to_file(*args, new_folder = True, results=False):
 
 
 
-def import_complex_data(data_folder):
+def import_complex_data(data_folder: Path):
     """
     Parameters
     ----------
-    data_folder : str
+    data_folder : Path
         The path name of the folder where the data files are located.
 
     Returns
     -------
-    np.array
+    tuple
         Extracts information about the complex from the data files in data_folder.
+        Order: nodes, edges, faces, faces_slip, faces_areas, faces_normals, volumes, nr_cells, A0, A1, A2, A3, B1, B2, B3
     """
-
+    
     # Import cell complex data files
-            
-    directory = os.getcwd() # str type
-            
-    os.chdir(data_folder)
     
-    if os.path.isfile('./A0.txt') or os.path.isfile('.\\A0.txt'):
-            
-        with open('A0.txt') as file:
-            
-            A0 = np.genfromtxt(file, delimiter = ' ')
+    data = []
     
-    if os.path.isfile('./A1.txt') or os.path.isfile('.\\A1.txt'):
+    if (data_folder / 'nodes.txt'):
+        with open(data_folder / 'nodes.txt') as file:
+            nodes = np.genfromtxt(file, delimiter = ' ')
+        data.append(nodes)
+        
+    if (data_folder / 'edges.txt'):
+        with open(data_folder / 'edges.txt') as file:
+            edges = np.genfromtxt(file, delimiter = ' ')
+        data.append(edges)
+        
+    if (data_folder / 'faces.txt'):
+        with open(data_folder / 'faces.txt') as file:
+            faces = np.genfromtxt(file, delimiter = ' ').astype(int)
+        data.append(faces)
+        
+    if (data_folder / 'faces_slip.txt'):
+        with open(data_folder / 'faces_slip.txt') as file:
+            faces_slip = list(np.genfromtxt(file, delimiter = ' ').astype(int))
+        data.append(faces_slip)
+        
+    if (data_folder / 'faces_areas.txt'):
+        with open(data_folder / 'faces_areas.txt') as file:
+            faces_areas = list(np.genfromtxt(file, delimiter = ' '))
+        data.append(faces_areas)
 
-        with open('A1.txt') as file:
-    
-            A1 = np.genfromtxt(file, delimiter = ' ')
-    
-    if os.path.isfile('./A2.txt') or os.path.isfile('.\\A2.txt'):
-
-        with open('A2.txt') as file:
-            
-            A2 = np.genfromtxt(file, delimiter = ' ')
+    if (data_folder / 'faces_normals.txt'):
+        with open(data_folder / 'faces_normals.txt') as file:
+            faces_normals = list(np.genfromtxt(file, delimiter = ' '))
+        data.append(faces_normals)
         
-    if os.path.isfile('./A3.txt') or os.path.isfile('.\\A3.txt'):
+    if (data_folder / 'volumes.txt').is_file():
+        with open(data_folder / 'volumes.txt') as file:
+            volumes = np.genfromtxt(file, delimiter = ' ').astype(int)
+        data.append(volumes)
         
-        with open('A3.txt') as file:
-            
-            A3 = np.genfromtxt(file, delimiter = ' ')
+    if (data_folder / 'volumes_vols.txt').is_file():
+        with open(data_folder / 'volumes_vols.txt') as file:
+            volumes_vols = list(np.genfromtxt(file, delimiter = ' '))
+        data.append(volumes_vols)
         
-    if os.path.isfile('./B1.txt') or os.path.isfile('.\\B1.txt'):
-            
-        with open('B1.txt') as file:
-            
-            B1 = np.genfromtxt(file, delimiter = ' ')
-            
-    if os.path.isfile('./B2.txt') or os.path.isfile('.\\B2.txt'):
-            
-        with open('B2.txt') as file:
-            
-            B2 = np.genfromtxt(file, delimiter = ' ')
-            
-    if os.path.isfile('./B3.txt') or os.path.isfile('.\\B3.txt'):
-            
-        with open('B3.txt') as file:
-            
-            B3 = np.genfromtxt(file, delimiter = ' ')
-            
-    if os.path.isfile('./faces_areas.txt') or os.path.isfile('.\\faces_areas.txt'):
-            
-        with open('faces_areas.txt') as file:
-            
-            faces_areas = np.genfromtxt(file, delimiter = ' ')
-            
-    if os.path.isfile('./faces_slip.txt') or os.path.isfile('.\\faces_slip.txt'):
-            
-        with open('faces_slip.txt') as file:
-            
-            faces_slip = np.genfromtxt(file, delimiter = ' ')
-            
-    if os.path.isfile('./node_degrees.txt') or os.path.isfile('.\\node_degrees.txt'):
-            
-        with open('node_degrees.txt') as file:
-            
-            node_degrees = np.genfromtxt(file, delimiter = ' ')
-            
-    if os.path.isfile('./normals.txt') or os.path.isfile('.\\normals.txt'):
-            
-        with open('normals.txt') as file:
-            
-            faces_normals = np.genfromtxt(file, delimiter = ' ')
-            
-    # if os.path.isfile('./number_of_cells.txt') or os.path.isfile('.\\number_of_cells.txt'):
-            
-    #     with open('number_of_cells.txt') as file:
-            
-    #         nr_cells = np.genfromtxt(file, delimiter = ' ')
-              
-    os.chdir(directory)
-    
-    return A0.astype(int), A1.astype(int), A2.astype(int), A3.astype(int), B1.astype(int), B2.astype(int), B3.astype(int), faces_areas, list(faces_slip.astype(int)), list(node_degrees.astype(int)), faces_normals #, list(nr_cells.astype(int))
+    if (data_folder / 'nr_cells.txt'):   
+        with open(data_folder / 'nr_cells.txt') as file:
+            nr_cells = list(np.genfromtxt(file, delimiter = ' ').astype(int))
+        data.append(nr_cells)
+        
+    if (data_folder / 'A0.txt'):
+        with open(data_folder / 'A0.txt') as file:
+            A0 = np.genfromtxt(file, delimiter = ' ').astype(int)
+        data.append(A0)
+        
+    if (data_folder / 'A1.txt'):
+        with open(data_folder / 'A1.txt') as file:
+            A1 = np.genfromtxt(file, delimiter = ' ').astype(int)
+        data.append(A1)
+        
+    if (data_folder / 'A2.txt'):
+        with open(data_folder / 'A2.txt') as file:
+            A2 = np.genfromtxt(file, delimiter = ' ').astype(int)
+        data.append(A2)
+        
+    if (data_folder / 'A3.txt'):
+        with open(data_folder / 'A3.txt') as file:
+            A3 = np.genfromtxt(file, delimiter = ' ').astype(int)
+        data.append(A3)
+        
+    if (data_folder / 'B1.txt'):
+        with open(data_folder / 'B1.txt') as file:
+            B1 = np.genfromtxt(file, delimiter = ' ').astype(int)
+        data.append(B1)
+        
+    if (data_folder / 'B2.txt'):
+        with open(data_folder / 'B2.txt') as file:
+            B2 = np.genfromtxt(file, delimiter = ' ').astype(int)
+        data.append(B2)
+        
+    if (data_folder / 'B3.txt'):
+        with open(data_folder / 'B3.txt') as file:
+            B3 = np.genfromtxt(file, delimiter = ' ').astype(int)
+        data.append(B3)
+        
+    return data
 
 
 

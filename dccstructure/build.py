@@ -2,7 +2,7 @@
 """
 Created on Tue Oct 25 2022
 
-Last edited on: Mar 14 11:20 2023
+Last edited on: Nov 28 11:30 2023
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -14,7 +14,6 @@ This module is part of the dccstructure_mp package. In here you will find functi
 # ----- # ----- #  IMPORTS # ----- # ----- #
 
 
-import os
 import numpy as np
 from scipy.spatial.distance import cdist
 from itertools import combinations # to avoid nested for loops
@@ -403,13 +402,12 @@ def check_uniqueness(array):
     
     if len(np.argwhere(test != 1)) == 0:
         
-        value = True
+        return True
         
     else:
         
-        value = False
-        
-    return value
+        return False
+
 
 
 
@@ -1259,7 +1257,7 @@ def create_edges(cells0D, special0D, lattice, structure, dim = 3, size = None, m
 
 
 
-""" The following 2 functions are to be used specifically in the function create_faces(). """
+""" The following 3 functions are to be used specifically in the function create_faces(). """
 
 
 def bcc_faces_worker(batch, cells1D, structure, size):
@@ -1363,6 +1361,9 @@ def find_faces_slip(face, structure, special0D):
     special0D: tuple of numpy arrays
         Contains numpy arrays defining points in 3D space which are nodes of different types. The default is None because it
         is only needed for 'bcc' and 'fcc'.
+        
+        Requires: special0D = (nodes_sc, nodes_bcc, nodes_fcc)
+        
     cells2D : np array
         An array whose rows list the indices of nodes which make up one face. The default is None.
         
@@ -1373,6 +1374,9 @@ def find_faces_slip(face, structure, special0D):
     
     if structure == 'fcc':
         
+        # A face is a slip face if all of its nodes are of type FCC or if two of its nodes are of type FCC and the last is of
+        # type SC.
+        
         is_slip_face = ((face[0] in special0D[2] and face[1] in special0D[2] and face[2] in special0D[2])
                      or (face[0] in special0D[0] and face[1] in special0D[2] and face[2] in special0D[2])
                      or (face[0] in special0D[2] and face[1] in special0D[0] and face[2] in special0D[2])
@@ -1380,10 +1384,12 @@ def find_faces_slip(face, structure, special0D):
         
     elif structure == 'bcc':
         
+        # A face is a slip face if one and only one of its nodes is of type BCC.
+        
         is_slip_face = ((face[0] in special0D[1] and face[1] not in special0D[1] and face[2] not in special0D[1])
                      or (face[0] not in special0D[1] and face[1] in special0D[1] and face[2] not in special0D[1])
                      or (face[0] not in special0D[1] and face[1] not in special0D[1] and face[2] in special0D[1]))
-        
+    
     return is_slip_face
         
         
@@ -1660,9 +1666,7 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
                            cells1D = cells1D,
                            structure = structure,
                            size = size)
-            
-        # Instantiate multiprocessing pool
-        
+                    
         global_faces = np.empty((0,3))  ;  global_faces_slip = []
         
         # Need to turn the 'batches' from edge indices to edges, i.e. (node,node) pairs.
@@ -1670,35 +1674,32 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
         for i in range(len(batches)):
 
             batches[i] = cells1D[batches[i]]
-        
-        with mp.Pool() as pool:
             
+        # Instantiate multiprocessing pool:
+        
+        with mp.Pool() as pool:            
             for result in pool.imap(part, batches):
-                
                 global_faces = np.vstack((global_faces, result))
-        
-        # Now we need to sort out which faces correspond to slip planes.
-        
-        part = partial(find_faces_slip,
-                        structure = structure,
-                        special0D = special0D)
-        
-        with mp.Pool() as pool:
-            
-            # Here we use pool.map to preserve the order in which the elements are passed to the multiprocessing pool
-            
-            for result in pool.map(part, global_faces, chunksize = int(len(global_faces)/os.cpu_count())):
-                
-                global_faces_slip.append(result)
-        
-        global_faces_slip = np.array(list(range(0, len(global_faces))))[global_faces_slip].tolist()
         
         # Now we sort the array 'global_faces' and list 'global_faces_slip'.
         
         global_faces = global_faces[global_faces[:,2].argsort()]                 # sort along the last column
         global_faces = global_faces[global_faces[:,1].argsort(kind='mergesort')] # sort along the second column
         global_faces = global_faces[global_faces[:,0].argsort(kind='mergesort')] # sort along the first column
+
+        # Now we need to sort out which faces correspond to slip planes.
         
+        part = partial(find_faces_slip,
+                       structure = structure,
+                       special0D = special0D)
+        
+        with mp.Pool() as pool:
+            # Here we use pool.map to preserve the order in which the elements are passed to the multiprocessing pool
+            for result in pool.map(part, global_faces):
+                global_faces_slip.append(result)
+        
+        global_faces_slip = np.array(list(range(0, len(global_faces))))[global_faces_slip].tolist()
+                
         return global_faces.astype(int), global_faces_slip
 
 
@@ -2019,7 +2020,6 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
     """
     
     if type(lattice) == list:
-        
         lattice = np.array(lattice)
         
     first_u_cell = np.array([[0,0,0]]) + np.sum(lattice, axis=0) / 2
@@ -2082,22 +2082,18 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
         t1 = time.time() - t0
         
         if len(nodes) == nr_nodes(size, struc):
-            
             print('The function create_nodes() produced the expected number of nodes.\n')
             status.append(True)
             
         elif len(nodes) != nr_nodes(size, struc):
-            
             print('The function create_nodes() did NOT produce the expected number of nodes.\n')
             status.append(False)
             
-        if check_uniqueness(nodes):
-            
+        if check_uniqueness(nodes):            
             print('The function create_nodes() produced unique nodes.\n')
             status.append(True)
     
         else:
-            
             print('The function create_nodes() did NOT produce unique nodes.\n')
             status.append(False)
             
@@ -2131,29 +2127,25 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
                              special0D = special0D,
                              lattice = lattice,
                              structure = struc,
-                             dim = 3,
+                             dim = dim,
                              size = size,
                              multiprocess = multiprocess)
         
         t3 = time.time() - t0
         
         if len(edges) == nr_edges(size, struc):
-            
             print("The function create_edges() produced the expected number of edges.\n")
             status.append(True)
             
         elif len(edges) != nr_edges(size, struc):
-            
             print("The function create_edges() did NOT produce the expected number of edges.\n")
             status.append(False)
             
         if check_uniqueness(edges):
-            
             print('The function create_edges() produced unique edges.\n')
             status.append(True)
             
         else:
-            
             print('The function create_edges() did NOT produce unique edges.\n')
             status.append(False)
             
@@ -2174,42 +2166,34 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
         t4 = time.time() - t0
         
         if len(faces) == nr_faces(size, struc):
-            
             print("The function create_faces() produced the expected number of faces.\n")
             status.append(True)
             
         elif len(faces) != nr_faces(size, struc):
-            
             print("The function create_faces() did NOT produce the expected number of faces.\n")
             status.append(False)
             
         if check_uniqueness(faces):
-            
             print('The function create_faces() produced unique faces.\n')
             status.append(True)
             
         else:
-            
             print('The function create_faces() did NOT produce unique faces.\n')
             status.append(False)
             
         if len(faces_slip) == nr_faces_slip(size, struc):
-            
             print("The function create_faces() produced the expected number of slip faces.\n")
             status.append(True)
             
         elif len(faces_slip) != nr_faces_slip(size, struc):
-            
             print("The function create_faces() did NOT produce the expected number of slip faces.\n")
             status.append(False)
             
         if check_uniqueness(faces_slip):
-            
             print('The function create_faces() produced unique slip faces.\n')
             status.append(True)
             
         else:
-            
             print('The function create_faces() did NOT produce unique slip faces.\n')
             status.append(False)
 
@@ -2231,33 +2215,27 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
         t5 = time.time() - t0
         
         if len(volumes) == nr_volumes(size, struc):
-            
             print("The function create_volumes() produced the expected number of volumes.\n")
             status.append(True)
             
         elif len(volumes) != nr_volumes(size, struc):
-            
             print("The function create_volumes() did NOT produce the expected number of volumes.\n")
             status.append(False)
             
         if check_uniqueness(volumes):
-            
             print('The function create_volumes() produced unique volumes.\n')
             status.append(True)
             
         else:
-            
             print('The function create_volumes() did NOT produce unique volumes.\n')
             status.append(False)
             
         print(f"Time elapsed: {t5} s.\n")
         
         if np.all(status):
-            
             print("-> SUCCESS!\n")
             
         else:
-            
             print("-> FAILURE!")
         
         del t0
@@ -2286,7 +2264,7 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
     
 #     nr_cells = [nr_nodes(size, struc), nr_edges(size, struc), nr_faces(size, struc), nr_volumes(size, struc)]
     
-#     from iofiles_mp import write_to_file
+#     from iofiles import write_to_file
     
 #     write_to_file(nodes, 'nodes',
 #                   edges, 'edges',

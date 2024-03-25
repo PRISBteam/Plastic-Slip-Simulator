@@ -38,6 +38,10 @@ def unit_normal(points: np.ndarray):
     
     shape = np.shape(points)
     
+    if shape[-1] != 3:
+        
+        raise ValueError("The points must have 3D coordinates.")
+    
     if len(shape) == 2:
         
         v1 = points[1] - points[0]

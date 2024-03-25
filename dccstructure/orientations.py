@@ -2,7 +2,7 @@
 """
 Created on Tue Oct 25 2022
 
-Last edited on: Mar 14 11:20 2023
+Last edited on: Mar 13 12:00 2024
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -26,8 +26,9 @@ import time
 
 import sys
 sys.path.append('../')
+sys.path.append('./')
 
-from dccstructure_mp.build import find_equal_rows
+from dccstructure.build import find_equal_rows
 # from dccstructure_mp.iofiles_mp import write_to_file
 
 

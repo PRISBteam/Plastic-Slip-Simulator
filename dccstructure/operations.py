@@ -2,7 +2,7 @@
 """
 Created on Mon Jun 20 16:27 2022
 
-Last edited on: 12/07/2022 12:10
+Last edited on: 08/02/2024 15:45
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -14,36 +14,12 @@ on the DCC complex.
 
 # ----- # ----- #  IMPORTS # ----- # ----- #
 
-
 import numpy as np
 from math import factorial
+import sys
 
-import os
-
-directory = os.getcwd().split('/')
-
-if 'dccstructure' in directory:
-    
-    directory.remove('dccstructure')
-    
-    directory = '/'.join(str(i) for i in directory)
-    
-    os.chdir(directory)
-    
-    from dccstructure import geometry
-    
-    directory = os.path.join(directory, r'dccstructure')
-       
-    os.chdir(directory)
-    
-else:
-    
-    from dccstructure import geometry
-    
-del directory
-
-# from build_complex import build_complex
-
+sys.path.append('../')
+import dccstructure.geometry as geometry
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #
 
@@ -76,7 +52,7 @@ def node_weight(node, cells_3D, cells_0D):
 
 
 
-def metric_tensor(cell, cells_3D, cells_0D, compl='simplicial'):
+def metric_tensor(cell, cells_3D, cells_0D, compl):
     """
     Parameters
     ----------
@@ -108,7 +84,7 @@ def metric_tensor(cell, cells_3D, cells_0D, compl='simplicial'):
         
     elif compl not in ['simplicial', 'quasi-cubical']:
         
-        print("\nWhen calling the function operations.inner_product(), the 'compl' argument must be set to either 'simplicial' (default) or 'quasi-cubical'.\n")
+        print("\nWhen calling the function operations.inner_product(), the 'compl' argument must be set to either 'simplicial' or 'quasi-cubical'.\n")
             
     for node in cell:
         
@@ -141,12 +117,15 @@ def inner_product(cell, cells_3D, cells_0D, dim=3, compl='simplicial'):
 
     """
     
+    if type(cell) not in [list, np.ndarray]:
+        
+        cell = [cell]
+    
     numerator = 0
     
     for node in cell:
         
-        incident_vols =  cells_3D[np.argwhere(cells_3D == node)[:,0]] # array whose rows list the indices of the constituent
-                                                                      # nodes of the 3-cells incident on 'node'
+        incident_vols =  cells_3D[np.argwhere(cells_3D == node)[:,0]] # array whose rows list the indices of the constituent nodes of the 3-cells incident on 'node'
         
         numerator += node_weight(node, cells_3D, cells_0D) * np.sum([geometry.geo_measure(cells_0D[i]) for i in incident_vols])
     
@@ -253,6 +232,57 @@ def adj_coboundary(cell, cells_3D, cells_2D, cells_1D, cells_0D, v2f, f2e, e2n, 
             
     return adjcobnd
         
+
+
+def star_3(cell, cells_3D, cells_0D, dim=3, compl='simplicial'):
+    """
+    Parameters
+    ----------
+    cell : list OR np array
+        A listing of the indices of the constituent nodes of a p-cell in the complex.
+    cells_3D : np array
+        An array whose rows list the indices of nodes which make up one 3-cell.
+    cells_0D : np array (N x 3)
+        A numpy array whose rows list the spatial coordinates of points.
+    dim : int, optional
+        The physical dimension of the complex. The default is 3.
+    compl: str, optional
+        The type of complex. Supported options are 'simplicial' (default) and 'quasi-cubical'.
+
+    Returns
+    -------
+    int
+        DESCRIPTION.
+    """
+    
+    result = np.empty((0,2))
+    
+    if type(cell) == list:
+        
+        cell = np.array(cell)
+        
+    if compl == 'simplicial':
+        
+        for node in cell:
+        
+            coefficient = (1 / 4) / inner_product(node, cells_3D, cells_0D, dim, compl)
+            
+            result = np.vstack((result, np.array([int(node), coefficient])))
+            
+    elif compl == 'quasi-cubical':
+        
+        for node in cell:
+        
+            coefficient = (1 / 2**3) / inner_product(node, cells_3D, cells_0D, dim, compl)
+            
+            result = np.vstack((result, np.array([int(node), coefficient])))
+            
+    elif compl not in ['simplicial', 'quasi-cubical']:
+        
+        print("\nWhen calling the function operations.star_3(), the 'compl' argument must be set to either 'simplicial' (default) or 'quasi-cubical'.\n")
+        
+    return result
+
 
 
 def star(cell, cells_3D, cells_2D, cells_1D, cells_0D, v2f, f2e, e2n, dim=3, compl='simplicial'):

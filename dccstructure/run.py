@@ -1,7 +1,7 @@
 """
 Created on Tue Oct 25 2022
 
-Last edited on: Mar 14 11:20 2023
+Last edited on: Mar 13 12:00 2024
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -25,11 +25,12 @@ Arguments that can be passed:
         
         --dim int : specifies the dimension of the complex (default is 3);
         --basisv flt flt flt flt flt flt flt flt flt : specifies the 9 components of the 3 lattice basis vectors;
-        --mp bool : if True, the code will run with Python's multiprocessing package, i.e. paralellisation of operations;
-        -d bool : if True, the code will output the node degrees;
-        -n bool : if True, the code will output the unit normals to the 2-cells;
-        -a bool : if True, the code will output the areas of the 2-cells;
-        -s bool : if True, the code will output the indices of 2-cells corresponding to slip planes;
+        --mp : if passed, the code will run with Python's multiprocessing package, i.e. paralellisation of operations. This will not work if all of the complex dimensions (as passed to --size) are smaller than the number of available CPUs;
+        -d : if passed, the code will output the node degrees;
+        -n : if passed, the code will output the unit normals to the 2-cells;
+        -a : if passed, the code will output the areas of the 2-cells;
+        -v : if passed, the code will output the volumes of the 3-cells;
+        -s : if passed, the code will output the indices of 2-cells corresponding to slip planes;
 
 """
 
@@ -40,12 +41,14 @@ import multiprocessing as mp
 import os
 
 import sys
+sys.path.append('../../')
 sys.path.append('../')
+sys.path.append('./')
 
 from dccstructure import build as build
 from dccstructure import matrices as mat
 from dccstructure import orientations as ori
-from dccstructure.geometry import unit_normal, geo_measure
+from dccstructure.geometry import unit_normal, geo_measure, tetrahedron_volume
 from dccstructure.iofiles import write_to_file
 
 
@@ -95,7 +98,7 @@ parser.add_argument(
     '--mp',
     action = 'store_true',
     required = False,
-    help = "If True, employs Python's multiprocessing package to parallelise operations and speed up processing."
+    help = "If True, employs Python's multiprocessing package to parallelise operations and speed up processing. This will not work if all of the complex dimensions (as passed to --size) are smaller than the number of available CPUs."
 )
 
 parser.add_argument(
@@ -120,6 +123,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    '-v',
+    action = 'store_true',
+    required = False,
+    help = "Whether to also output the volumes of 3-cells."
+)
+
+parser.add_argument(
     '-s',
     action = 'store_true',
     required = False,
@@ -139,6 +149,7 @@ MULT = args.mp
 degrees_yes = args.d
 normals_yes = args.n
 areas_yes = args.a
+vols_yes = args.v
 slips_yes = args.s
 
 try:
@@ -154,8 +165,6 @@ try:
 except:
     
     LATTICE = np.array([[1,0,0],[0,1,0],[0,0,1]])
-    print('-> Due to error in parsing argument, the lattice basis vectors have been changed to [1,0,0], [0,1,0] and [0,0,1].')
-
 
 if np.all(MULT == True and [x < os.cpu_count() + 1 for x in SIZE]):
 
@@ -174,6 +183,7 @@ if __name__ == '__main__':
                                   multiprocess = MULT)
 
     nodes = results[0] ; edges = results[1] ; faces = results[2] ; faces_slip = results[3] ; volumes = results[4]
+    
     
     # Define relative orientations
     
@@ -198,10 +208,20 @@ if __name__ == '__main__':
                   B3, 'B3',
                   new_folder = True)
     
+    write_to_file(nodes, 'nodes',
+                  edges, 'edges',
+                  faces, 'faces',
+                  faces_slip, 'faces_slip',
+                  volumes, 'volumes',
+                  f2e, 'faces_to_edges',
+                  v2f, 'volumes_to_faces',
+                  new_folder = False)
+
+    
     del A0, A1, A2, A3, B1, B2, B3
     
     nrs_cells = np.array([[len(nodes)], [len(edges)], [len(faces)], [len(volumes)]])
-    write_to_file(nrs_cells, 'number_of_cells', new_folder = False)
+    write_to_file(nrs_cells, 'nr_cells', new_folder = False)
     
     del nrs_cells
     
@@ -214,18 +234,26 @@ if __name__ == '__main__':
         normals = []
         with mp.Pool() as pool:
             for result in pool.imap(unit_normal, nodes[faces]):
-                normals.append(result)
-        write_to_file(normals, 'normals', new_folder = False)
-        del result, normals
+                normals.append(result.astype(float))
+        write_to_file(np.array(normals), 'faces_normals', new_folder = False)
+        del result
         
     if areas_yes:
         areas = []
         with mp.Pool() as pool: 
             for result in pool.imap(geo_measure, nodes[faces]):
-                areas.append(result)
+                areas.append(float(result))
         write_to_file(areas, 'faces_areas', new_folder = False)
-        del result, areas
+        del result
         
+    if vols_yes:
+        volumes_vols = []
+        with mp.Pool() as pool:
+            for result in pool.imap(tetrahedron_volume, nodes[volumes]):
+                volumes_vols.append(float(result))
+        write_to_file(volumes_vols, 'volumes_vols', new_folder = False)
+        del result, volumes_vols
+
     if slips_yes: 
         write_to_file(faces_slip, 'faces_slip', new_folder = False)
     

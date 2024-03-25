@@ -2,7 +2,7 @@
 """
 Created on Tue Oct 25 2022
 
-Last edited on: Mar 14 11:20 2023
+Last edited on: Mar 13 12:00 2024
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -24,6 +24,7 @@ import multiprocessing as mp
 
 import sys
 sys.path.append('../')
+sys.path.append('./')
 
 from dccstructure.build import check_uniqueness
 from dccstructure.iofiles import write_to_file
