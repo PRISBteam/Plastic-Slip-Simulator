@@ -17,11 +17,12 @@ Optional:
 
     --dim int : specifies the dimension of the complex (default is 3);
     --basisv flt flt flt flt flt flt flt flt flt : specifies the 9 components of the 3 lattice basis vectors;
-    --mp bool : if True, the code will run with Python's multiprocessing package, i.e. paralellisation of operations. This will not work if all of the complex dimensions (as passed to --size) are smaller than the number of available CPUs;
-    -d bool : if True, the code will output the node degrees;
-    -n bool : if True, the code will output the unit normals to the 2-cells;
-    -a bool : if True, the code will output the areas of the 2-cells;
-    -s bool : if True, the code will output the indices of 2-cells corresponding to slip planes.
+    --mp : if passed, the code will run with Python's multiprocessing package, i.e. paralellisation of operations. This will not work if all of the complex dimensions (as passed to --size) are smaller than the number of available CPUs;
+    -d : if passed, the code will output the node degrees;
+    -n : if passed, the code will output the unit normals to the 2-cells;
+    -a : if passed, the code will output the areas of the 2-cells;
+    -v : if passed, the code will output the volumes of the 3-cells;
+    -s : if passed, the code will output the indices of 2-cells corresponding to slip planes.
         
 This module is meant to be run from a command line/terminal in the dccstructure directory (*i.e.* inside the dccstructure folder). It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex with the parameters specified by the arguments above. It returns the adjacency and incidence matrices of the complex, as well as other topological and geometrical information (optional arguments). This file can be run from a terminal with the following command (ignore the + sign at the start and remove the angular brackets):
 ```diff
@@ -31,27 +32,6 @@ This module is meant to be run from a command line/terminal in the dccstructure 
 ### build.py
 
 This module contains the functions necessary to construct the complex, from 0-cells to 3-cells. In here is also defined the function build_complex() which executes the whole module in sequence and returns the node coordinates and the edges, faces and volumes as lists of the constituent nodes.
-
-### build_complex.py
-
-The script **build_complex.py** is a summarised execution of all the functions in the **build.py** module. It takes the following input arguments on a terminal/command line:
-
-    Mandatory:
-        
-        --size int int int : specifies the number of unit cells in the directions x, y, z (default is 1 1 1);
-        --struc str : specifies the crystallographic structure of the complex;
-        
-    Optional:
-        
-        --dim int : specifies the dimension of the complex. The default is 3;
-        --basisv flt flt flt flt flt flt flt flt flt : specifies the 9 components of the 3 lattice basis vectors. The default is a unit vector in each canonical direction;
-        --mp bool : if True, the code will run with Python's multiprocessing package, i.e. paralellisation of operations. This will not work if all of the complex dimensions (as passed to --size) are smaller than the number of available CPUs;
-        -e bool : if True, the code will output additional geometric information about the complex(2-cell normals and areas). There is no extra information for the simple cubic structure. The default is False.
-
-This module is callable via a terminal/command line from the directory of the dccstructure package (*i.e.* inside the dccstructure folder). It builds a discrete cell complex by calling the build_complex() function from the **build.py** module with the parameteres specified. Unlike **run.py**, it outputs the node coordinates as well as the edges, faces and volumes as lists of the constituent nodes. This file can be run from a terminal with the following command (ignore the + sign at the start and remove the angular brackets):
-```diff
-+    python run.py --size <int int int> --struc <str> (+ optional arguments)
-```
 
 ### orientations.py
 
@@ -73,14 +53,9 @@ This module contains functions which define metric operations (and related quant
 
 This module contains a useful function for automating outputs of matrices and other variables as .txt files.
 
-### visualisation.py
-
-This module contains a (non-optimised and not as-of-yet user-friendly) function that outputs pictures of the complex with selected 1-cells, 2-cells or 3-cells highlighted.
-
 ## Known/unresolved issues:
 
 1. The function build.find_neighbours() returns a TypeError for an asymmetrical BCC structure.
-2. The function visualisation.graph_complex() is currently unoperational, since it needs yet to be updated to the module-like version of the code (as it is written, it is still from the time when the whole code was written in a single .py file).
 
 
 ## Acknowledgements
@@ -93,4 +68,4 @@ This code has been created as a part of the EPSRC funded projects EP/V022687/1 _
 Distributed under the GNU General Public License v3.0.
 
 
-Last updated on: 14 March 2023
+Last updated on: 25 March 2024
