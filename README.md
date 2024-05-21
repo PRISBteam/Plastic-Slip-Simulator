@@ -57,6 +57,7 @@ This module contains a useful function for automating outputs of matrices and ot
 
 1. The function build.find_neighbours() returns a TypeError for an asymmetrical BCC structure.
 
+
 # 2. A Metropolis-Hastings (MH) algorithm for computing microscopic plastic slips in FCC crystals
 
 The package **NaimarkMH** contains Python modules that define a *Cochain* and *MHalgorithm* classes. The first is used to define real-valued or vector-valued cochains on a cell complex, while the second is used run a MH algorithm to minimise the energy of a plastic system based on a combinatorial version of Naimark's model (1998).
