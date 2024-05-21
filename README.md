@@ -1,6 +1,6 @@
-# PCC Discrete Plasticity
+# 1. Building a polyhedral cell complex (PCC) that reproduces the most common slip planes in FCC and BCC crystals
 
-The package DCC_Structure contains Python modules to build a discrete cell complex (DCC) based on the slip planes of crystal nanostructures (simple cubic, FCC, BCC; HCP not yet available).
+The package **dccstructure** contains Python modules to build a discrete cell complex (DCC) based on the slip planes of crystal nanostructures (simple cubic, FCC, BCC; HCP not yet available).
 
 ## Modules
 
@@ -57,6 +57,23 @@ This module contains a useful function for automating outputs of matrices and ot
 
 1. The function build.find_neighbours() returns a TypeError for an asymmetrical BCC structure.
 
+# 2. A Metropolis-Hastings (MH) algorithm for computing microscopic plastic slips in FCC crystals
+
+The package **NaimarkMH** contains Python modules that define a *Cochain* and *MHalgorithm* classes. The first is used to define real-valued or vector-valued cochains on a cell complex, while the second is used run a MH algorithm to minimise the energy of a plastic system based on a combinatorial version of Naimark's model (1998).
+
+## Modules
+
+### cellcomplex.py
+
+This module contains functions that take the data from a PCC, previously built using the **dccstructure** package, and the classes defined in the **base.py** module in *PRISBteam/Voronoi_PCC_Analyser/matgen* to restructure the data output by **dccstructure** into the data structure of the *CellComplex* class defined in **base.py**.
+
+### cochain.py
+
+This module defines the *Cochain* class as a subclass of the *CellComplex* class defined in the **base.py** module in *PRISBteam/Voronoi_PCC_Analyser/matgen*. The *Cochain* class contains a dictionary that assigns values (integer, floating-point or array-like) to the cells of a cell complex. It is furnished with several methods, including the dunder methods +, -, *, == and len. Other methods include the cup product and the inner product of cochains, and the star operator, all defined to reproduce the theory of Berbatov et al. (2022) and Berbatov (Thesis) (2023).
+
+### metrohast_vector.py
+
+This module defines the *MHalgorithm* class used to compute the energy minimisation of a system of plastic slips in an FCC complex, using the data output by **dccstructure** and restructured by **cellcomplex.py**. Using the *Cochain* class defined in **cochain.py**, slips are mathematically defined as vector-valued 2-cochains.
 
 ## Acknowledgements
 
