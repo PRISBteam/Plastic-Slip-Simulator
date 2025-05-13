@@ -76,6 +76,18 @@ This module defines the *Cochain* class as a subclass of the *CellComplex* class
 
 This module defines the *MHalgorithm* class used to compute the energy minimisation of a system of plastic slips in an FCC complex, using the data output by **dccstructure** and restructured by **cellcomplex.py**. Using the *Cochain* class defined in **cochain.py**, slips are mathematically defined as vector-valued 2-cochains.
 
+### get_alphas_discriminatory.py
+
+This script was used to find the dependency of the self-energy of microslips on the rotation of the applied stress tensor, specifically in the case of uniaxial tension in the z direction rotating about the x axis. It is called 'discriminatory' because it discriminates between the slip systems.
+
+### run_range_with_meanfield.py
+
+This module employs the *MHalgorithm* class from **metrohast_sum.py** and runs several simulations (i.e. iterations) in parallel for a range of values of the applied stress magnitude. It can be run from a terminal/command line.
+
+### run_lambda_range.py
+
+This module employs the *MHalgorithm* class from **metrohast_sum.py** and runs several simulations (i.e. iterations) in parallel for a range of values of the mean-field coupling parameter. It can be run from a terminal/command line.
+
 ## Acknowledgements
 
 This code has been created as a part of the EPSRC funded projects EP/V022687/1 _“Patterns recognition inside shear bands: tailoring microstructure against localisation”_ (PRISB).
@@ -86,4 +98,4 @@ This code has been created as a part of the EPSRC funded projects EP/V022687/1 _
 Distributed under the GNU General Public License v3.0.
 
 
-Last updated on: 25 March 2024
+Last updated on: 13 May 2025
