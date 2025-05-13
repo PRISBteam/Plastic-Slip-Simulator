@@ -2,7 +2,7 @@
 """
 Created on Tue Oct 25 2022
 
-Last edited on: Mar 13 12:00 2024
+Last edited on: May 06 15:36 2025
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -23,8 +23,7 @@ from pathlib import Path ; import os
 import multiprocessing as mp
 
 import sys
-sys.path.append('../')
-sys.path.append('./')
+sys.path.append('/Users/user/Library/CloudStorage/OneDrive-TheUniversityofManchester/PhD Compendium/Projects/Plastic_Slip_Naimark/')
 
 from dccstructure.build import check_uniqueness
 from dccstructure.iofiles import write_to_file
@@ -47,9 +46,9 @@ def node_degree(index: int, cells1D: np.ndarray) -> int:
     node_degrees : list
         A list containing the degree of each node; the index in the list corresponds to the index of the node..
     """
-            
-    node_degree = np.count_nonzero(cells1D == index)
-        
+    
+    node_degree = np.count_nonzero(np.abs(cells1D) == index)
+    
     return node_degree
 
 
@@ -322,7 +321,9 @@ def get_matrices(cells0D: np.ndarray,
                  cells2D: np.ndarray,
                  cells3D: np.ndarray,
                  faces_to_edges: np.ndarray,
-                 volumes_to_faces: np.ndarray):
+                 volumes_to_faces: np.ndarray,
+                 adjacency_matrices=True,
+                 incidence_matrices=True):
     """
     This function summarises the entire "matrices" part of the DCCStructure package.
     This function takes in the complex data (nodes, edges, faces, volumes) as well as data on the relative orientations (faces_to_edges,
@@ -367,79 +368,99 @@ def get_matrices(cells0D: np.ndarray,
     
     """ --- ADJACENCY MATRICES --- """
     
-    print("\n\\\\--- 1. Assembling adjacency matrices ---//\n")
-    
-    t0 = time.time()
-    
-    with mp.Pool() as pool:
-        for result in pool.map(part_A0, list(range(len(cells0D))), chunksize = int(len(cells0D)/os.cpu_count())):
-            A0.extend(result)
+    statusA = False
+    if adjacency_matrices == True:
         
-    with mp.Pool() as pool:
-        for result in pool.map(part_A1, list(range(len(cells1D))), chunksize = int(len(cells1D)/os.cpu_count())):
-            A1.extend(result)
-            
-    with mp.Pool() as pool:
-        for result in pool.map(part_A2, list(range(len(cells2D))), chunksize = int(len(cells2D)/os.cpu_count())):
-            A2.extend(result)
-    
-    with mp.Pool() as pool:
-        for result in pool.map(part_A3, list(range(len(cells3D))), chunksize = int(len(cells3D)/os.cpu_count())):
-            A3.extend(result)
-            
-    print(f"Time elapsed: {time.time() - t0} s.\n")
-    
-    del pool, result, t0
+        del statusA
         
+        print("\n\\\\--- 1. Assembling adjacency matrices ---//\n")
+        
+        t0 = time.time()
+        
+        with mp.Pool() as pool:
+            for result in pool.map(part_A0, list(range(len(cells0D))), chunksize = int(len(cells0D)/os.cpu_count())):
+                A0.extend(result)
+            
+        with mp.Pool() as pool:
+            for result in pool.map(part_A1, list(range(len(cells1D))), chunksize = int(len(cells1D)/os.cpu_count())):
+                A1.extend(result)
+                
+        with mp.Pool() as pool:
+            for result in pool.map(part_A2, list(range(len(cells2D))), chunksize = int(len(cells2D)/os.cpu_count())):
+                A2.extend(result)
+        
+        with mp.Pool() as pool:
+            for result in pool.map(part_A3, list(range(len(cells3D))), chunksize = int(len(cells3D)/os.cpu_count())):
+                A3.extend(result)
+                
+        print(f"Time elapsed: {time.time() - t0} s.\n")
+        
+        del pool, result, t0
+        
+        A0 = np.array(A0)
+        A1 = np.array(A1)
+        A2 = np.array(A2)
+        A3 = np.array(A3)
+        
+        statusA = [check_uniqueness(A0),
+                   check_uniqueness(A1),
+                   check_uniqueness(A2),
+                   check_uniqueness(A3)]
+    
     """ --- INCIDENCE MATRICES --- """
     
-    print("\\\\--- 2. Assembling incidence matrices ---//\n")
+    statusI = False
+    if incidence_matrices == True:
+        
+        del statusI
     
-    t0 = time.time()
-    
-    cells = []
-    for i in range(len(cells1D)): 
-        cells.append([i, cells1D[i]])
-    
-    with mp.Pool() as pool:
-        for result in pool.map(part_B1, cells, chunksize = int(len(cells)/os.cpu_count())):
-            B1.extend(result)
-    
-    cells = []
-    for i in range(len(faces_to_edges)):
-        cells.append([i, faces_to_edges[i]])
-    
-    with mp.Pool() as pool:
-        for result in pool.map(part_B2, cells, chunksize = int(len(cells)/os.cpu_count())):
-            B2.extend(result)
-            
-    cells = []
-    for i in range(len(volumes_to_faces)):
-        cells.append([i, volumes_to_faces[i]])
-            
-    with mp.Pool() as pool:
-        for result in pool.map(part_B3, cells, chunksize = int(len(cells)/os.cpu_count())):
-            B3.extend(result)
+        print("\\\\--- 2. Assembling incidence matrices ---//\n")
+        
+        t0 = time.time()
+        
+        cells = []
+        for i in range(len(cells1D)): 
+            cells.append([i, cells1D[i]])
+        
+        with mp.Pool() as pool:
+            for result in pool.map(part_B1, cells, chunksize = int(len(cells)/os.cpu_count())):
+                B1.extend(result)
+        
+        cells = []
+        for i in range(len(faces_to_edges)):
+            cells.append([i, faces_to_edges[i]])
+        
+        with mp.Pool() as pool:
+            for result in pool.map(part_B2, cells, chunksize = int(len(cells)/os.cpu_count())):
+                B2.extend(result)
                 
-    print(f"Time elapsed: {time.time() - t0} s.\n")
+        cells = []
+        for i in range(len(volumes_to_faces)):
+            cells.append([i, volumes_to_faces[i]])
+                
+        with mp.Pool() as pool:
+            for result in pool.map(part_B3, cells, chunksize = int(len(cells)/os.cpu_count())):
+                B3.extend(result)
+                    
+        print(f"Time elapsed: {time.time() - t0} s.\n")
+        
+        del cells, pool, result, t0
     
-    del cells, pool, result, t0
+        B1 = np.array(B1)
+        B2 = np.array(B2)
+        B3 = np.array(B3)
     
-    A0 = np.array(A0)
-    A1 = np.array(A1)
-    A2 = np.array(A2)
-    A3 = np.array(A3)
-    B1 = np.array(B1)
-    B2 = np.array(B2)
-    B3 = np.array(B3)
+        statusI = [check_uniqueness(B1),
+                   check_uniqueness(B2),
+                   check_uniqueness(B3)]
     
-    status = [check_uniqueness(A0),
-              check_uniqueness(A1),
-              check_uniqueness(A2),
-              check_uniqueness(A3),
-              check_uniqueness(B1),
-              check_uniqueness(B2),
-              check_uniqueness(B3)]
+    if statusA:
+        if statusI:
+            status = statusA + statusI
+        else:
+            status = statusA
+    elif statusI:
+        status = statusI
     
     if np.all(status):
         
@@ -447,8 +468,12 @@ def get_matrices(cells0D: np.ndarray,
         status.append(True)
         
     else:
-        
-        matrices = np.array(['A0','A1','A2','A3','B1','B2','B3'])
+        if adjacency_matrices == True and incidence_matrices == True:
+            matrices = np.array(['A0','A1','A2','A3','B1','B2','B3'])
+        elif adjacency_matrices == True and incidence_matrices == False:
+            matrices = np.array(['A0','A1','A2','A3'])
+        elif adjacency_matrices == False and incidence_matrices == True:
+            matrices = np.array(['B1','B2','B3'])
         matrices = np.delete(matrices, status)
         print(f'The matrices {matrices} did not compute correctly.\n')
         print('-> FAILURE!\n')
@@ -456,8 +481,13 @@ def get_matrices(cells0D: np.ndarray,
     node_degrees = []
     for j in range(len(cells0D)):
         node_degrees.append(node_degree(j, cells1D))
-        
-    return A0, A1, A2, A3, B1, B2, B3, node_degrees
+    
+    if adjacency_matrices == True and incidence_matrices == True:
+        return A0, A1, A2, A3, B1, B2, B3, node_degrees
+    elif adjacency_matrices == True and incidence_matrices == False:
+        return A0, A1, A2, A3, node_degrees
+    elif adjacency_matrices == False and incidence_matrices == True:
+        return B1, B2, B3, node_degrees
 
 
 def convert_to_cscmatrix(array):

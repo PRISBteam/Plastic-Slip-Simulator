@@ -112,7 +112,7 @@ def inner_product(cell, cells_3D, cells_0D, dim=3, compl='simplicial'):
 
     Returns
     -------
-    The inner product for simplicial complexes as given in Definition 3.7 and Remark 3.9 of Berbatov, K., et al. (2022). "Diffusion
+    The inner product for cell complexes as given in Definition 3.7 and Remark 3.9 of Berbatov, K., et al. (2022). "Diffusion
     in multi-dimensional solids using Forman's combinatorial differential forms". App Math Mod 110, pp. 172-192.
 
     """

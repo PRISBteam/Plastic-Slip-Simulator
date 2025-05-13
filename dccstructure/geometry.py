@@ -43,27 +43,21 @@ def unit_normal(points: np.ndarray):
         raise ValueError("The points must have 3D coordinates.")
     
     if len(shape) == 2:
-        
         v1 = points[1] - points[0]
         v2 = points[2] - points[0]
         
         normal = np.cross(v1, v2)
-        
         normal = normal / np.linalg.norm(normal)
     
     elif len(shape) == 3:
-        
         normal = np.empty((0,3))
         
         for i in range(len(points)):
-            
             v1 = points[i,1,:] - points[i,0,:]
             v2 = points[i,2,:] - points[i,0,:]
             
             x_prod = np.cross(v1, v2)
-            
             x_prod = x_prod / np.linalg.norm(x_prod)
-            
             normal = np.vstack((normal, x_prod))
     
     return normal
@@ -93,42 +87,69 @@ def vector_angle(vector1: np.ndarray, vector2: np.ndarray):
 
 
 
-def polygon_area(points: np.ndarray):
-    """
-    Parameters
-    ----------
-    points : np array (N x 3)
-        An array whose rows are 3D coordinates of points.
-    
-    Returns
-    -------
-    The area of the polygon defined by the points given.
-    
-    Notes
-    -------
-    Based on the answer by Jamie Bull on https://stackoverflow.com/questions/12642256/find-area-of-polygon-from-xyz-coordinates (Accessed 20 Jun 2022).
-    """
-    
-    if len(points) < 3: # not a plane - no area
-    
-        raise ValueError("/nThe array submitted into geometry.polygon_area() must have at least 3 points to define a plane./n")
-        
-    total = np.zeros((1,3))
-                
-    for i in range(len(points)):
-        
-        reference1 = points[i]
-        
-        reference2 = points[(i+1) % len(points)]
-        
-        xprod = np.cross(reference1, reference2)
-        
-        total += xprod
-        
-    result = np.dot(total, unit_normal(points))
-    
-    return float(abs(result/2))
+# def polygon_area(points: np.ndarray):
+#     """
+#     Parameters
+#     ----------
+#     points : np array (N x 3)
+#         An array whose rows are 3D coordinates of points.
 
+#     Returns
+#     -------
+#     The area of the polygon defined by the points given.
+
+#     Notes
+#     -------
+#     Based on the answer by Jamie Bull on https://stackoverflow.com/questions/12642256/find-area-of-polygon-from-xyz-coordinates (Accessed 20 Jun 2022).
+#     """
+
+#     if len(points) < 3: # not a plane - no area
+#         raise ValueError("/nThe array submitted into geometry.polygon_area() must have at least 3 points to define a plane./n")
+#     total = np.zeros((1,3))
+#     for i in range(len(points)):
+#         reference1 = points[i]
+#         reference2 = points[(i+1) % len(points)]
+#         xprod = np.cross(reference1, reference2)
+#         total += xprod
+#     result = np.dot(total, unit_normal(points))
+#     return float(abs(result[0]/2))
+
+
+""" Thank you ChatGPT --- """
+def radial_sort_3d(points, normal):
+    centroid = np.mean(points, axis=0)
+    
+    # Choose a reference axis in the plane
+    ref_vec = points[0] - centroid
+    ref_vec /= np.linalg.norm(ref_vec)
+    
+    # A second in-plane vector orthogonal to ref_vec
+    in_plane_vec = np.cross(normal, ref_vec)
+    
+    def angle(p):
+        vec = p - centroid
+        x = np.dot(vec, ref_vec)
+        y = np.dot(vec, in_plane_vec)
+        return np.arctan2(y, x)
+    
+    return points[np.argsort([angle(p) for p in points])]
+
+def polygon_area(points: np.ndarray):
+    if len(points) < 3:
+        raise ValueError("Array must have at least 3 points.")
+    
+    normal = unit_normal(points)
+    ordered_points = radial_sort_3d(points, normal)
+
+    total = np.zeros(3)
+    for i in range(len(ordered_points)):
+        p1 = ordered_points[i]
+        p2 = ordered_points[(i + 1) % len(ordered_points)]
+        total += np.cross(p1, p2)
+
+    area = np.dot(total, normal)
+    return abs(area) / 2
+""" --- Just these two"""
 
 
 def tetrahedron_volume(points: np.ndarray):

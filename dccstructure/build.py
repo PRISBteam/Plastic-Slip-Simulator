@@ -2,7 +2,7 @@
 """
 Created on Tue Oct 25 2022
 
-Last edited on: Nov 28 11:30 2023
+Last edited on: Oct 20 20:08 2024
 
 Author: Afonso Barroso, 9986055, The University of Manchester
 
@@ -20,6 +20,7 @@ from itertools import combinations # to avoid nested for loops
 import multiprocessing as mp
 from functools import partial
 import time
+from tqdm import tqdm
 
 
 # ----- # ----- # FUNCTIONS # ------ # ----- #
@@ -181,6 +182,12 @@ def find_equal_rows(points, array, multiprocess = False):
         
     row_indices = np.empty((0,2))
     
+    if len(points.shape) < 1:
+        points = np.array([points])
+        
+    if len(array.shape) < 1:
+        array = np.array(array)
+    
     if multiprocess == False:
         
         # We want to find the row indices in 'array' of rows that correspond to rows in 'points'.
@@ -297,7 +304,16 @@ def nr_nodes(size, structure, dim = 3):
         
         n = (size[0]+1)*(size[1]+1)*(size[2]+1)
         
-    elif structure in ["bcc", "fcc"]:
+    elif structure == 'fcc':
+        
+        """ For a complex with size L, M, N in the x, y and z directions, respectively (which is to say, e.g. L
+        computational unit cells in the x direction), there is a node at the centre of each computational unit
+        cell (CUC), at the centre of each CUC face, at the centre of each CUC edge and each CUC vertex. In essence,
+        each CUC is divided into eight smaller Simple Cubic CUCs. """
+        
+        n = nr_nodes([size[0]*2, size[1]*2, size[2]*2], 'simple cubic', dim = 3)
+        
+    elif structure == "bcc":
         
         n = ((size[0]+1)*(size[1]+1)*(size[2]+1) +
               size[0]*size[1]*size[2] +
@@ -311,7 +327,7 @@ def nr_edges(size, structure, dim = 3):
     if dim == 2:
         
         size = [size[0], size[1], 0]
-
+        
     if structure == "simple cubic":
         
         n = ((size[0]+1)*(size[1]+1)*size[2] + (size[0]+1)*size[1]*(size[2]+1) + size[0]*(size[1]+1)*(size[2]+1))
@@ -324,9 +340,13 @@ def nr_edges(size, structure, dim = 3):
         
     elif structure == "fcc":
         
-        n = ((12+6)*size[0]*size[1]*size[2] +
-             4*((size[0]+1)*size[1]*size[2] + size[0]*(size[1]+1)*size[2] + size[0]*size[1]*(size[2]+1)) +
-             ((size[0]+1)*(size[1]+1)*size[2] + (size[0]+1)*size[1]*(size[2]+1) + size[0]*(size[1]+1)*(size[2]+1)))
+        """ Each FCC computational unit cell is divided into eight smaller Simple Cubic CUCs. In addition to the
+        edges established in this SC complex, the nodes at the centres of the faces of the original CUC are connected
+        to the nodes on the vertices of that face and to the nodes at the centres of adjacent faces. """
+        
+        n = (nr_edges([size[0]*2, size[1]*2, size[2]*2], 'simple cubic', dim = 3) + 
+             4 * ((size[0]+1)*size[1]*size[2] + size[0]*(size[1]+1)*size[2] + size[0]*size[1]*(size[2]+1)) +
+             12 * np.prod(size))
         
     return n
 
@@ -348,8 +368,12 @@ def nr_faces(size, structure, dim = 3):
         
     elif structure == "fcc":
         
-        n = (4 * nr_faces(size, 'simple cubic') +
-             size[0]*size[1]*size[2] * (4*8 + 3*4))
+        """ Each face of the original computational unit cell is divided into 8 triangles. Additionally, each Cartesian
+        plane crossing the centre of the original CUC is divided into 8 triangles. Finally, each vertex of the original
+        CUC has one tetrahedron radiating from it, giving 4 faces per vertex of the original CUC. """
+        
+        n = (8 * nr_faces(size, 'simple cubic', dim = 3) +
+             (8*3 + 8*4) * np.prod(size))
         
     return n
 
@@ -366,11 +390,11 @@ def nr_faces_slip(size, structure, dim=3):
         
     elif structure == "bcc":
         
-        n = 6 * 6 * np.product(size)
+        n = 6 * 6 * np.prod(size)
         
     elif structure == "fcc":
         
-        n = 4 * 8 * np.product(size)
+        n = 4 * 8 * np.prod(size)
         
     return n
 
@@ -383,15 +407,18 @@ def nr_volumes(size, structure, dim = 3):
 
     if structure == "simple cubic":
         
-        n = np.product(size)
+        n = np.prod(size)
         
     elif structure == "bcc":
         
-        n = np.product(size) * 4 * 6
+        n = np.prod(size) * 4 * 6
         
     elif structure == "fcc":
         
-        n = np.product(size) * (8 + 12 + 8)
+        """ Each edge of the original CUC has two tetrahedra attached to it. Additionally, each vertex of the original
+        CUC has one tetrahedron associated with it. Finally, the inner octagon is divided into eight tetrahedra. """
+        
+        n = np.prod(size) * (2*12 + 8 + 8)
         
     return n
 
@@ -478,11 +505,11 @@ def create_nodes(origin, lattice, size, structure, dim = 3, axis = None, multipr
             
     
     
-    ##----- BCC & FCC 3D - with & w/o MP -----##
+    ##----- BCC 3D - with & w/o MP -----##
     
-    elif structure in ['bcc', 'fcc'] and dim == 3:
+    elif structure == 'bcc' and dim == 3:
                 
-        """ In 3D, both BCC and FCC need a node structure that joins the FCC and BCC lattice positions, i.e. in a cubic unit cell, we need nodes at every
+        """ In 3D, the BCC complex needs a node structure that joins the FCC and BCC lattice positions, i.e. in a cubic unit cell, we need nodes at every
         corner, at every centre of a face and at the centre of the cubic cell. If you imagine such a lattice in a Cartesian coordinate system, there are
         two types of 'layers'.
         For example, consider such a lattice with primitive vectors [1,0,0], [0,1,0] and [0,0,1]. We have the following structure:
@@ -606,7 +633,35 @@ def create_nodes(origin, lattice, size, structure, dim = 3, axis = None, multipr
         # input array at once.
         
         nodes = worker_sort(nodes)
-            
+
+
+    ##----- FCC 3D - with & w/o MP -----##
+    
+    elif structure == 'fcc' and dim == 3:
+                
+        """ In 3D, the FCC complex needs a node structure that joins the FCC and BCC lattice positions, i.e. in a cubic unit cell, we need nodes at every
+        corner and at every centre of a face. To achieve spatial homogeneity for the support volumes of 2-cells and the number of neighbours of 3-cells,
+        we also require nodes at the centre of every edge of the original computation unit cell. Therefore, the FCC node structure is actually a double SC
+        node structure.
+        
+        When calling create_nodes() again, one must be careful to compensate the 'origin' parameter in regards to the displacement computed at the start of the function
+        and at the start of the 'simple cubic' case!
+        
+        Creating multiprocessing pools is expensive and sometimes not worth the trouble. So, we use multiprocessing only at the end, to assemble the whole complex.
+        
+        Another step we must consider is keeping a record of which nodes are of which type. We want to create lists of indices of cells0D that group together nodes
+        of different character in what regards their relative arrangement in the 3-complex. We shall separate them into three categories: a 'SC' category of the nodes
+        on the corners of unit cells, a 'FCC' category for the nodes on the centres of the faces of unit cells, and a 'BCC' category for the nodes on the
+        centres of unit cells. """
+        
+        return create_nodes(origin = origin + np.sum(lattice, axis=0) / 4,
+                            lattice = lattice/2,
+                            size = [size[0]*2, size[1]*2, size[2]*2],
+                            structure = 'simple cubic',
+                            dim = 3,
+                            axis = None,
+                            multiprocess = multiprocess)
+
     
     ##----- BCC & FCC 2D - w/o MP -----##
     
@@ -640,7 +695,7 @@ def create_nodes(origin, lattice, size, structure, dim = 3, axis = None, multipr
     # This case is similar to the layers of type 2 in the 3D case.
 
         print("\nSorry, the case FCC 2D in create_nodes() isn't supported yet.\n")
-        
+    
     
     return nodes
 
@@ -680,43 +735,58 @@ def label_nodes(cells0D, origin, lattice, size, multiprocess = False):
     # This function applies to FCC and BCC structures only.
     
     # We want to create lists of indices of cells0D that group together nodes of different character in what regards their relative
-    # arrangement in the 3-complex. We shall separate them into three categories: a 'SC' category of the nodes on the corners of unit
-    # cells, a 'FCC' category for the nodes on the centres of the faces of unit cells, and a 'BCC' category for the nodes on the
-    # centres of unit cells.
+    # arrangement in the 3-complex. We shall separate them into four categories: a 'SC' category of the nodes on the corners of original
+    # computational unit cells, a 'FCC' category for the nodes on the centres of the faces of original CUCs, a 'BCC' category for
+    # the nodes on the centres of original CUCs, and a 'EC' category for the nodes on the centres of the edges of the original CUCs.
     
-    t = create_nodes(origin = origin,
-                     lattice = lattice,
-                     size = size,
-                     structure = 'simple cubic',
-                     dim = 3,
-                     multiprocess = multiprocess)
-    
-    nodes_sc = find_equal_rows(points = t,
+    SC = create_nodes(origin = origin,
+                      lattice = lattice,
+                      size = size,
+                      structure = 'simple cubic',
+                      dim = 3,
+                      multiprocess = multiprocess)
+    nodes_sc = find_equal_rows(points = SC,
                                array = cells0D,
                                multiprocess = multiprocess)
+    nodes_sc = nodes_sc[:,1].tolist()
     
-    nodes_sc = list(nodes_sc[:,1]) ; del t
+    ECx = create_nodes(origin = origin + lattice[0]/2,
+                       lattice = lattice,
+                       size = [size[0]-1, size[1], size[2]],
+                       structure = 'simple cubic',
+                       dim = 3,
+                       multiprocess = multiprocess)
+    ECy = create_nodes(origin = origin + lattice[1]/2,
+                       lattice = lattice,
+                       size = [size[0], size[1]-1, size[2]],
+                       structure = 'simple cubic',
+                       dim = 3,
+                       multiprocess = multiprocess)
+    ECz = create_nodes(origin = origin + lattice[2]/2,
+                       lattice = lattice,
+                       size = [size[0], size[1], size[2]-1],
+                       structure = 'simple cubic',
+                       dim = 3,
+                       multiprocess = multiprocess)
+    nodes_ec = find_equal_rows(points = np.vstack((ECx, ECy, ECz)),
+                               array = cells0D,
+                               multiprocess = multiprocess)
+    nodes_ec = sorted(nodes_ec[:,1].tolist())
     
-    t = create_nodes(origin = origin + np.sum(lattice, axis=0) / 2,
-                     lattice = lattice,
-                     size = [size[0] - 1, size[1] - 1, size[2] - 1],
-                     structure = 'simple cubic',
-                     dim = 3,
-                     multiprocess = multiprocess)
-    
-    nodes_bcc = find_equal_rows(points = t,
+    BCC = create_nodes(origin = origin + np.sum(lattice, axis=0) / 2,
+                       lattice = lattice,
+                       size = [size[0] - 1, size[1] - 1, size[2] - 1],
+                       structure = 'simple cubic',
+                       dim = 3,
+                       multiprocess = multiprocess)
+    nodes_bcc = find_equal_rows(points = BCC,
                                 array = cells0D,
                                 multiprocess = multiprocess)
+    nodes_bcc = nodes_bcc[:,1].tolist()
     
-    nodes_bcc = list(nodes_bcc[:,1]) ; del t
+    nodes_fcc =  np.delete(np.arange(cells0D.shape[0]), nodes_sc + nodes_ec + nodes_bcc).tolist()
     
-    nodes_fcc = list(
-                     np.delete(
-                               list(range(cells0D.shape[0])) , nodes_sc + nodes_bcc
-                               )
-                     )
-        
-    return nodes_sc, nodes_bcc, nodes_fcc
+    return nodes_sc, nodes_bcc, nodes_fcc, nodes_ec
 
 
 
@@ -782,7 +852,7 @@ def partition_nodes(cells0D, size, lattice, special0D):
     # With this in mind, we iterate over every other plane of atoms and build blocks with that plane, the previous one and the next one.
     # The previous and next plane of atoms are defined by a decrease and an increase of lattice[ax,ax] / 2 in the 'ax' coordinate.
     
-    for i in range(0, size[ax] * 2 - 1, 2):
+    for i in tqdm(range(0, size[ax] * 2 - 1, 2), desc = 'Partitioning nodes'):
         
         # We want to single out the nodes in the i-th layer of unit cells
     
@@ -812,38 +882,38 @@ def partition_nodes(cells0D, size, lattice, special0D):
 """ The following 4 functions are to be used specifically in the function create_edges(). """
 
 
-def sc2sc_edges(nodes_sc1, nodes_sc2, nbrs, cells0D, lattice):
+def sc2ec_edges(nodes, nbrs, cells0D, lattice):
 
     """ This function will be used in create_edges() for any 3D structure. 
-        It establishes the edges connecting SC nodes to SC nodes.
+        It establishes edges between any two nodes that form a regular hexahedral grid.
     """
-    
-    counter = 1 # This will keep track of the index of the next point as listed in 'nodes_sc2'
         
-    for point in nodes_sc1: # for an SC point
+    counter = 1 # This will keep track of the index of the next point as listed in 'nodes_sc_and_ec'
+        
+    for point in tqdm(nodes, desc = 'Creating edges', miniters = 1000): # for an SC or EC point
         
         # Calculate only distances between the current point and all other points which have not been considered
         # yet and are not the very point we're considering (so, all points with indices >= counter).
         
-        dist = cdist(np.array([point]),                                 # Need 'point' to be a 2D array in cdist()
-                     nodes_sc2[counter : ])
+        dist = cdist(np.array([point]), # Need 'point' to be a 2D array in cdist()
+                     nodes[counter : ])
         
-        # Consider as neighbours only the points which are one lattice constant away. Need to add 'counter' to each
+        # Consider as neighbours only the points which are one half lattice constant away. Need to add 'counter' to each
         # element, because the i-th entry in 'dist' is actually the distance between 'point' and the (i + counter)-th node
-        # in 'nodes_sc2'.
+        # in 'nodes'.
         
-        close_points = np.argwhere( dist <= np.max(lattice) )[:,1] + counter
+        close_points = np.argwhere( dist <= np.max(np.linalg.norm(lattice, axis=1))/2 )[:,1] + counter
         
-        # The array close_points is a list of indices of 'nodes_sc2' corresponding to points which are up to one lattice
+        # The array close_points is a list of indices of 'nodes' corresponding to points which are up to one half lattice
         # constant away from 'point', the point we are considering now. The next step is to pair these indices with the
         # index of 'point', so as to have an organised list of neighbours. The index of the current 'point' will be equal to
         # 'counter' - 1.
         
-        # There's a catch, though, because nothing in life is simple. The indices we are working with are those of the array 'nodes_sc',
+        # There's a catch, though, because nothing in life is simple. The indices we are working with are those of the array 'nodes',
         # but the indices we really want are relative to the array 'cells0D'. So, we need to convert them over.
         
         point = np.array([point]) # the inputs of find_equal_rows() must be 2D arrays
-                        
+        
         index = list(find_equal_rows(point, cells0D)[:,1])
         
         # In order to pair the index of the current point (i.e. 'index') with the indices in 'close_points', we need them both to be Nx1 numpy
@@ -853,10 +923,10 @@ def sc2sc_edges(nodes_sc1, nodes_sc2, nbrs, cells0D, lattice):
         
         index = np.array(index).reshape(np.size(close_points), 1)
         
-        # The array close_points is a list of indices of 'nodes_sc2' corresponding to points which are up to one lattice
+        # The array close_points is a list of indices of 'nodes' corresponding to points which are up to one lattice
         # constant away from 'point', the point we are considering now. We need to scale these indices back as indices of 'cells0D'.
         
-        close_points = find_equal_rows(points = nodes_sc2[close_points], array = cells0D)[:,1]
+        close_points = find_equal_rows(points = nodes[close_points], array = cells0D)[:,1]
         
         # Now we join it all together.
         
@@ -865,7 +935,7 @@ def sc2sc_edges(nodes_sc1, nodes_sc2, nbrs, cells0D, lattice):
         nbrs = np.vstack((nbrs, current_neighbours))
         
         counter += 1
-        
+    
     return nbrs
 
 
@@ -875,7 +945,7 @@ def BCC_onbcc_edges(nodes_bcc, nbrs, cells0D, lattice):
         It establishes the edges connecting BCC nodes to any other kind of node.
     """
     
-    for point in nodes_bcc: # for a BCC point
+    for point in tqdm(nodes_bcc, desc = 'Creating more edges', miniters = 1000): # for a BCC point
         
         # We will make use of the geometry of the unit cell in this context and of the index ordering of the nodes as given by the function
         # create_nodes(). When calculating the distance between the current BCC node and other points, there is no need to cycle through EVERY
@@ -925,14 +995,14 @@ def BCC_onfcc_edges(nodes_fcc, nodes_sc, nbrs, cells0D, lattice):
         It establishes the edges connecting FCC nodes to SC and FCC nodes (FCC-BCC edges are covered in BCC_onbcc_edges().
     """
     
-    for point in nodes_fcc: # for an FCC point
+    for point in tqdm(nodes_fcc, desc = 'Creating more edges', miniters = 1000): # for an FCC point
             
-        # Any edges connecting FCC nodes to BCC nodes have already been established in the previous step, with BCC_frombcc_edges().
+        # Any edges connecting FCC nodes to BCC nodes have already been established in the previous step, with BCC_onbcc_edges().
         
         # We consider as neighbours only the SC points which are at most half a square diagonal away. To allow for the lattice basis vectors
         # to have asymmetrical dimensions, that "half a square diagonal" is actually better understood as half a cubic diagonal multiplied by
-        # the cosine of the angle between (the vector from one of the SC nodes on the same face as the virtual node to the BCC node in the
-        # same unit cell) and (the vector from one of the SC nodes on the same face as the virtual node to the virtual node).
+        # the cosine of the angle between (the vector from one of the SC nodes on the same face as 'point' to the BCC node in the
+        # same computational unit cell) and (the vector from one of the SC nodes on the same face as 'point' to 'point').
         
         # So, the first step is to find an SC node on the same plane as the virtual node we are considering. Note that, if the plane is
         # of the type xi = const (where xi is a coordinate), then 'point' and the SC nodes will have the same xi coordinate. There will, of course,
@@ -980,14 +1050,12 @@ def BCC_onfcc_edges(nodes_fcc, nodes_sc, nbrs, cells0D, lattice):
     return nbrs
 
 
-def FCC_other_edges(cells0D_1, cells0D_2, nbrs, lattice):
+def FCC_other_edges(nodes_fcc: list, size: list, cells0D, nbrs, lattice):
     
     """ This function will be used in create_edges() for the 3D FCC structure.
         It establishes edges connecting FCC nodes to any other kind of node.
     """
-    
-    counter = 0
-    
+        
     # We consider as neighbours only the points which are at most half a square diagonal away. To allow for the lattice basis vectors
     # to have asymmetrical dimensions, we will consider three distinct square diagonals (which are actually rectangular diagonals, but that's
     # just semantics) and, for simplicity, take the largest one as the neighbour distance cut-off (this assumes that there isn't a huuuge
@@ -997,35 +1065,45 @@ def FCC_other_edges(cells0D_1, cells0D_2, nbrs, lattice):
     diag2 = np.sqrt(np.linalg.norm(lattice[1]) ** 2 + np.linalg.norm(lattice[2]) ** 2)
     diag3 = np.sqrt(np.linalg.norm(lattice[2]) ** 2 + np.linalg.norm(lattice[0]) ** 2)
     
-    max_dist = np.max(np.array([diag1, diag2, diag3])) / 2
+    max_dist = max([diag1, diag2, diag3]) / 2 + 0.000001 # introduce some tolerance
 
-    for point in cells0D_1:
+    for index in tqdm(nodes_fcc, desc = 'Creating even more edges', miniters = 1000):
         
-        # To save on computation, we consider only the distance between the current point and all other nodes that have not been considered yet.
-                                
+        point = cells0D[index]
+        
+        # To save on computation, we consider only the distance between the current point and all FCC nodes that have not been considered yet.
+        # Additionally, because we are targeting FCC-type nodes, we need to allow for 'point' to be connected to the FCC node that comes
+        # previous on the list. We do this by setting a 'search_range' using our foreknowledge that the 'cells0D' are listed first along the
+        # x direction, then the y direction and only then along the z direction. So, to allow both upper and lower FCC nodes to be screened,
+        # we set the 'search_range' to be equivalent to two 'layers' of atoms, that is, on the x-y plane.
+        
+        search_range = nr_nodes([size[0]*2, size[1]*2, 2], 'simple cubic')
+        search_range = slice(max(0, index - search_range - 1), min(len(cells0D), index + search_range + 1), None)
+        search_range = cells0D[search_range]
+        
         dist = cdist(np.array([point]), # Need 'point' to be a 2D array in cdist()
-                     cells0D_2[counter + 1 : ])
-
-        close_points = np.argwhere( dist <= max_dist )[:,1]
+                     search_range)
         
-        # Because we only considered the nodes after the current 'point', we need to scale the indices presented in 'close_points' to match the
-        # indices of 'cells0D_2'.
+        close_points = np.intersect1d(np.argwhere(dist > 0)[:,1], np.argwhere(dist <= max_dist)[:,1])
         
-        close_points = close_points + counter + 1
-
+        # The indices listed in 'close_points' refer to the array 'coords_fcc', so we need them as indices of 'cells0D'.
+        
+        close_points = find_equal_rows(search_range[close_points], cells0D)[:,1]
+        
         # In order to pair the index of the current point with the indices in 'close_points', we need them both to be 3x1 numpy
         # arrays so we can use np.hstack().
         
-        index = [counter] * np.size(close_points)
-        
+        index = [index] * np.size(close_points)
         index = np.array(index).reshape(np.size(close_points), 1)
-        
         current_neighbours = np.hstack((index, close_points.reshape(np.size(close_points), 1)))
         
-        nbrs = np.vstack((nbrs, current_neighbours))
-        
-        counter += 1
-        
+        for pair in current_neighbours.tolist():
+            if pair not in nbrs.tolist() and pair[::-1] not in nbrs.tolist():
+                nbrs = np.append(nbrs, [pair], axis=0)
+    
+    nbrs = nbrs[nbrs[:,1].argsort()]                 # sort along the second indicex
+    nbrs = nbrs[nbrs[:,0].argsort(kind='mergesort')] # sort along the first indices
+    
     return nbrs
 
 
@@ -1069,7 +1147,7 @@ def create_edges(cells0D, special0D, lattice, structure, dim = 3, size = None, m
         
         counter = 1 # This will keep track of the index of the next point as listed in 'cells0D'
         
-        for row in cells0D:
+        for row in tqdm(cells0D, desc = 'Creating edges'):
             
             # Calculate only distances between the current point (row) and all other points which have not been considered
             # yet and are not the very point we're considering (so, all points with indices >= counter).
@@ -1123,10 +1201,9 @@ def create_edges(cells0D, special0D, lattice, structure, dim = 3, size = None, m
             
             neighbours = np.empty((0,2))
             
-            neighbours = sc2sc_edges(nbrs = neighbours,
+            neighbours = sc2ec_edges(nbrs = neighbours,
                                      cells0D = cells0D,
-                                     nodes_sc1 = cells0D[special0D[0]],
-                                     nodes_sc2 = cells0D[special0D[0]],
+                                     nodes = ...,
                                      lattice = lattice)
                         
             # Now we move on to the BCC nodes. These need to be connected to every other node in the unit cell, i.e. every node a maximum distance away equal
@@ -1162,7 +1239,7 @@ def create_edges(cells0D, special0D, lattice, structure, dim = 3, size = None, m
     
     elif structure == 'fcc' and multiprocess == False:
         
-        """ Required: special0D = (nodes_sc, nodes_bcc, nodes_fcc). """
+        """ Required: special0D = (nodes_sc, nodes_bcc, nodes_fcc, nodes_ec). """
         
         neighbours = np.empty((0,2))
         
@@ -1175,19 +1252,21 @@ def create_edges(cells0D, special0D, lattice, structure, dim = 3, size = None, m
             # In the FCC structure, we again need SC, BCC and FCC nodes. The SC nodes will connect to each other and to the nearest
             # FCC nodes; adittionally, the FCC nodes will connect to each other and to the BCC node.
                         
-            # Let's deal with the SC-SC connections first.
+            # Let's deal first with the connections forming a regular hexahedral grid. In the case of FCC, every node is a vertex
+            # of some hexahedron.
                         
-            neighbours = sc2sc_edges(nbrs = neighbours,
+            neighbours = sc2ec_edges(nbrs = neighbours,
                                      cells0D = cells0D,
-                                     nodes_sc1 = cells0D[special0D[0]],
-                                     nodes_sc2 = cells0D[special0D[0]],
+                                     nodes = cells0D,
                                      lattice = lattice)
                         
-            # Now we deal with all other connections.
+            # Now we deal with all other connections. In the case of FCC, these are the edges connecting FCC-type nodes to other
+            # FCC-type nodes.
             
             neighbours = FCC_other_edges(nbrs = neighbours,
-                                         cells0D_1 = cells0D,
-                                         cells0D_2 = cells0D,
+                                         nodes_fcc = special0D[2],
+                                         size = size,
+                                         cells0D = cells0D,
                                          lattice = lattice)
                         
             # Now we sort the array.
@@ -1350,7 +1429,7 @@ def fcc_faces_worker(batch, cells1D, structure, size):
    return faces
 
 
-def find_faces_slip(face, structure, special0D):
+def find_faces_slip(face, structure, cells0D, special0D):
     """
     Determines if the input 'face' corresponds to a slip plane 2-cell.
     
@@ -1359,13 +1438,8 @@ def find_faces_slip(face, structure, special0D):
     structure: str, optional
         A descriptor of the basic structure of the lattice.
     special0D: tuple of numpy arrays
-        Contains numpy arrays defining points in 3D space which are nodes of different types. The default is None because it
-        is only needed for 'bcc' and 'fcc'.
-        
+        Contains numpy arrays defining points in 3D space which are nodes of different types.
         Requires: special0D = (nodes_sc, nodes_bcc, nodes_fcc)
-        
-    cells2D : np array
-        An array whose rows list the indices of nodes which make up one face. The default is None.
         
     Returns
     -------
@@ -1382,6 +1456,18 @@ def find_faces_slip(face, structure, special0D):
                      or (face[0] in special0D[2] and face[1] in special0D[0] and face[2] in special0D[2])
                      or (face[0] in special0D[2] and face[1] in special0D[2] and face[2] in special0D[0]))
         
+        # # But now we need to exclude those faces that are inside the inner octagon, since they are composed of all-FCC nodes,
+        # # but are not slip planes. We can do this by investigating the distances between the nodes of the face.
+        
+        # if is_slip_face:
+            
+        #     d = [np.linalg.norm(cells0D[face[2]] - cells0D[face[1]]),
+        #          np.linalg.norm(cells0D[face[1]] - cells0D[face[0]]),
+        #          np.linalg.norm(cells0D[face[0]] - cells0D[face[2]])]
+            
+        #     if max(d) / min(d) > 1:
+        #         is_slip_face = False
+        
     elif structure == 'bcc':
         
         # A face is a slip face if one and only one of its nodes is of type BCC.
@@ -1395,7 +1481,7 @@ def find_faces_slip(face, structure, special0D):
         
 
 
-def create_faces(cells1D, structure, size, special0D = None, multiprocess = False):
+def create_faces(cells1D, structure, size, cells0D, special0D = None, multiprocess = False):
     """
     Parameters
     ----------
@@ -1432,12 +1518,11 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
         
         # For each node:
 
-        for i in range(0, np.max(cells1D[:,1]) + 1):  # Need to add +1 because range() is exclusive at the top value
+        for i in tqdm(range(0, np.max(cells1D[:,1]) + 1), desc = 'Creating faces', miniters = 1000):  # Need to add +1 because range() is exclusive at the top value
         
             # We select the rows in 'cells1D', i.e. the edges, that contain that node in the first column.
         
             rows = np.where(cells1D[:,0] == i)
-            
             neighbour_points = cells1D[rows][:,1]
             
             # This last array will be a list of the neighbours of point i. Now we need to find the neighbours of those
@@ -1453,18 +1538,15 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
                 # First, we identify the rows in 'cells1D' where x and y are mentioned.
                 
                 rows_x = cells1D[np.where(cells1D == x)[0]]
-                
                 rows_y = cells1D[np.where(cells1D == y)[0]]
                 
                 # These arrays contain pairs of x or y and their neighbours, including i. So, secondly, we need to remove any 
                 # mention of i, and then any mention of x or y.
                 
                 rows_x_sans_i = rows_x[np.where(rows_x != i)]
-                
                 neighbours_x = rows_x_sans_i[np.where(rows_x_sans_i != x)]
                 
                 rows_y_sans_i = rows_y[np.where(rows_y != i)]
-                
                 neighbours_y = rows_y_sans_i[np.where(rows_y_sans_i != y)]
                 
                 # Now we need to find the common neighbours of x and y that are not i.
@@ -1474,7 +1556,6 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
                 if np.size(common_neighbours) != 0: # If there is, in fact, a second common neighbour
                     
                     face = np.array([[ i, x, y, common_neighbours[0] ]]) # Needs to be 2D to vstack
-                        
                     faces = np.vstack((faces, face))
                         
                 else:
@@ -1496,7 +1577,7 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
         
         faces_slip = []
         
-        for edge in cells1D:
+        for edge in tqdm(cells1D, desc = 'Creating faces'):
             
             # First we find the neighbours of the two endpoints. If we have to search the entire cells1D array, this will be a costly
             # operation. So, we limit the search to a set of likely neighbours of the endpoints of 'edge'. Any node with which the endpoints
@@ -1526,24 +1607,21 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
                 if len(find_equal_rows(trial, to_compare)[:,1]) == 2: # i.e. if both trial edges exist
                     
                     new_face = np.array([[edge[0], nb, edge[1]]])
-                    
                     faces = np.vstack((faces, new_face)).astype(int)
-                    
                     new_face = new_face[0] # Need the slice [0] because new_face was left as a 2D array above
                     
                     # The last step is to identify those faces which lie on slip planes. The way we can identify them is by the fact
                     # that they must all include 1 BCC node, whereas the remaining non-slip faces are all composed solely of SC nodes.
-                                        
+                    
+                    """ Old version
                     condition = ((new_face[0] in special0D[1] and new_face[1] not in special0D[1] and new_face[2] not in special0D[1])
                               or (new_face[0] not in special0D[1] and new_face[1] in special0D[1] and new_face[2] not in special0D[1])
                               or (new_face[0] not in special0D[1] and new_face[1] not in special0D[1] and new_face[2] in special0D[1]))
                     
                     if condition:
-                        
                         faces_slip.append(len(faces) - 1) # because 'new_face' was the last one to be added
-                    
+                    """
                 else:
-                    
                     pass
 
         # Now we sort the array 'faces' by order of the indices of the constituent nodes, in order of priority: along the
@@ -1553,6 +1631,11 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
         faces = faces[faces[:,1].argsort(kind='mergesort')] # sort along the second column
         faces = faces[faces[:,0].argsort(kind='mergesort')] # sort along the first column
         
+        for face in faces:
+            faces_slip.append(find_faces_slip(face, structure, cells0D, special0D))
+                
+        faces_slip = np.array(list(range(0, len(faces))))[faces_slip].tolist()
+        
         return faces, faces_slip
     
     
@@ -1560,7 +1643,7 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
     
     elif structure == 'fcc' and multiprocess == False:
         
-        """ Requires input: special0D = (nodes_sc, nodes_bcc, nodes_fcc) """
+        """ Requires input: special0D = (nodes_sc, nodes_bcc, nodes_fcc, nodes_ec) """
         
         # Since all faces are triangles, like in BCC, we can take the algorithm for the BCC case and adapt it.
         
@@ -1568,10 +1651,9 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
         # endpoints, find which other node(s) have those endpoints as neighbours, make faces.
         
         faces = np.empty((0,3))
-        
         faces_slip = []
                     
-        for edge in cells1D:
+        for edge in tqdm(cells1D, desc = 'Creating faces'):
             
             # First we find the neighbours of the two endpoints. If we have to search the entire cells1D array, this will be a costly
             # operation. So, we limit the search to a set of likely neighbours of the endpoints of 'edge'. Any node with which the endpoints
@@ -1603,27 +1685,14 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
                 if len(find_equal_rows(trial, to_compare)[:,1]) == 2: # i.e. if both trial edges exist
                     
                     new_face = np.array([[edge[0], nb, edge[1]]])
-                    
                     faces = np.vstack((faces, new_face)).astype(int)
                     
                     # Here we change the algorithm slightly. We want to keep a log of the faces which will constitute slip planes.
                     # This does not include faces on the sides of the cubic unit cell nor faces on the inside of the inner octahedron.
                     
-                    new_face = new_face[0] # Need the slice [0] because new_face was left as a 2D array above
-                    
-                    # Now, faces on slip planes are recognisable by being constituted of either 3 FCC nodes, or 2 FCC and 1 SC nodes.
-                    
-                    condition = ((new_face[0] in special0D[2] and new_face[1] in special0D[2] and new_face[2] in special0D[2])
-                              or (new_face[0] in special0D[0] and new_face[1] in special0D[2] and new_face[2] in special0D[2])
-                              or (new_face[0] in special0D[2] and new_face[1] in special0D[0] and new_face[2] in special0D[2])
-                              or (new_face[0] in special0D[2] and new_face[1] in special0D[2] and new_face[2] in special0D[0]))
-                    
-                    if condition:
-                        
-                        faces_slip.append(len(faces) - 1) # because 'new_face' was the last one to be added
+                    new_face = new_face[0] # Need the slice [0] because new_face was left as a 2D array
                     
                 else:
-                    
                     pass
         
         # Now we sort the array 'faces' by order of the indices of the constituent nodes, in order of priority: along the
@@ -1632,7 +1701,12 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
         faces = faces[faces[:,2].argsort()]                 # sort along the last column
         faces = faces[faces[:,1].argsort(kind='mergesort')] # sort along the second column
         faces = faces[faces[:,0].argsort(kind='mergesort')] # sort along the first column
-
+        
+        for face in faces:
+            faces_slip.append(find_faces_slip(face, structure, cells0D, special0D))
+                
+        faces_slip = np.array(list(range(0, len(faces))))[faces_slip].tolist()
+        
         return faces, faces_slip
     
     
@@ -1672,7 +1746,6 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
         # Need to turn the 'batches' from edge indices to edges, i.e. (node,node) pairs.
         
         for i in range(len(batches)):
-
             batches[i] = cells1D[batches[i]]
             
         # Instantiate multiprocessing pool:
@@ -1689,14 +1762,8 @@ def create_faces(cells1D, structure, size, special0D = None, multiprocess = Fals
 
         # Now we need to sort out which faces correspond to slip planes.
         
-        part = partial(find_faces_slip,
-                       structure = structure,
-                       special0D = special0D)
-        
-        with mp.Pool() as pool:
-            # Here we use pool.map to preserve the order in which the elements are passed to the multiprocessing pool
-            for result in pool.map(part, global_faces):
-                global_faces_slip.append(result)
+        for face in global_faces:
+            global_faces_slip.append(find_faces_slip(face, structure, cells0D, special0D))
         
         global_faces_slip = np.array(list(range(0, len(global_faces))))[global_faces_slip].tolist()
                 
@@ -1722,13 +1789,13 @@ def bccfcc_volumes_worker(batch, cells2D):
     for face in batch:
         
         nb_faces_0 = np.argwhere(cells2D == face[0])[:,0]           # first find the faces that have the same node face[0], 
-        nb_faces_0 = np.delete(nb_faces_0, nb_faces_0 == counter)    # then remove the current face to avoid issues
+        nb_faces_0 = np.delete(nb_faces_0, nb_faces_0 == counter)   # then remove the current face to avoid issues
         
-        nb_faces_1 = np.argwhere(cells2D == face[1])[:,0]           # first find the faces that have the same node face[0],
-        nb_faces_1 = np.delete(nb_faces_1, nb_faces_1 == counter)    # then remove the current face to avoid issues
+        nb_faces_1 = np.argwhere(cells2D == face[1])[:,0]           # first find the faces that have the same node face[1],
+        nb_faces_1 = np.delete(nb_faces_1, nb_faces_1 == counter)   # then remove the current face to avoid issues
         
-        nb_faces_2 = np.argwhere(cells2D == face[2])[:,0]           # first find the faces that have the same node face[0],
-        nb_faces_2 = np.delete(nb_faces_2, nb_faces_2 == counter)    # then remove the current face to avoid issues
+        nb_faces_2 = np.argwhere(cells2D == face[2])[:,0]           # first find the faces that have the same node face[2],
+        nb_faces_2 = np.delete(nb_faces_2, nb_faces_2 == counter)   # then remove the current face to avoid issues
         
         # Now we consider intersections between these 3 arrays. Somewhere in there we will find the 4th node to complete the volume.
         
@@ -1872,15 +1939,15 @@ def create_volumes(lattice, structure, cells0D = None, cells2D = None, multiproc
         
         counter = 0 # will keep track of which face we are currently on
         
-        for face in cells2D:
+        for face in tqdm(cells2D, desc = 'Creating volumes', miniters = 1000):
             
             nb_faces_0 = np.argwhere(cells2D == face[0])[:,0]           # first find the faces that have the same node face[0], 
             nb_faces_0 = np.delete(nb_faces_0, nb_faces_0 == counter)   # then remove the current face to avoid issues
             
-            nb_faces_1 = np.argwhere(cells2D == face[1])[:,0]           # first find the faces that have the same node face[0],
+            nb_faces_1 = np.argwhere(cells2D == face[1])[:,0]           # first find the faces that have the same node face[1],
             nb_faces_1 = np.delete(nb_faces_1, nb_faces_1 == counter)   # then remove the current face to avoid issues
             
-            nb_faces_2 = np.argwhere(cells2D == face[2])[:,0]           # first find the faces that have the same node face[0],
+            nb_faces_2 = np.argwhere(cells2D == face[2])[:,0]           # first find the faces that have the same node face[2],
             nb_faces_2 = np.delete(nb_faces_2, nb_faces_2 == counter)   # then remove the current face to avoid issues
             
             # Now we consider intersections between these 3 arrays. Somewhere in there we will find the 4th node to complete the volume.
@@ -2027,12 +2094,11 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
     
     if struc == 'simple cubic':
         
-        multiprocess = False # !!!!!!!! Multiprocessing not supported for simple cubic yet !!!!!!!!
+        multiprocess = False # Multiprocessing not supported for simple cubic yet
         
         #------- NODES in SC
 
         first_node = first_u_cell - np.sum(lattice, axis=0) / 2
-        
         nodes = create_nodes(structure = struc,
                              origin = first_node,
                              lattice = lattice,
@@ -2053,7 +2119,6 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
         faces = create_faces(edges,
                              structure = struc,
                              multiprocess = multiprocess)
-        
         faces_slip = np.copy(faces)
                 
         #------- VOLUMES in SC
@@ -2078,23 +2143,20 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
                               size = size,
                               origin = origin,
                               multiprocess = multiprocess)
-        
         t1 = time.time() - t0
         
         if len(nodes) == nr_nodes(size, struc):
-            print('The function create_nodes() produced the expected number of nodes.\n')
+            print('\nThe function create_nodes() produced the expected number of nodes.')
             status.append(True)
-            
         elif len(nodes) != nr_nodes(size, struc):
-            print('The function create_nodes() did NOT produce the expected number of nodes.\n')
+            print('\nThe function create_nodes() did NOT produce the expected number of nodes.')
             status.append(False)
             
         if check_uniqueness(nodes):            
-            print('The function create_nodes() produced unique nodes.\n')
+            print('The function create_nodes() produced unique nodes.')
             status.append(True)
-    
         else:
-            print('The function create_nodes() did NOT produce unique nodes.\n')
+            print('The function create_nodes() did NOT produce unique nodes.')
             status.append(False)
             
         print(f"Time elapsed: {t1} s.\n")
@@ -2105,16 +2167,13 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
         
         t0 = time.time()
         
-        nodes_sc, nodes_bcc, nodes_fcc = label_nodes(cells0D = nodes,
-                                                     origin = origin,
-                                                     lattice = lattice,
-                                                     size = size,
-                                                     multiprocess = multiprocess)
-        
+        special0D = label_nodes(cells0D = nodes,
+                                origin = origin,
+                                lattice = lattice,
+                                size = size,
+                                multiprocess = multiprocess)
         t2 = time.time() - t0
-        
-        special0D = (nodes_sc, nodes_bcc, nodes_fcc)
-        
+                
         print(f"Time elapsed: {t2} s.\n")
         
         
@@ -2130,23 +2189,20 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
                              dim = dim,
                              size = size,
                              multiprocess = multiprocess)
-        
         t3 = time.time() - t0
         
         if len(edges) == nr_edges(size, struc):
-            print("The function create_edges() produced the expected number of edges.\n")
+            print("\nThe function create_edges() produced the expected number of edges.")
             status.append(True)
             
         elif len(edges) != nr_edges(size, struc):
-            print("The function create_edges() did NOT produce the expected number of edges.\n")
+            print("\nThe function create_edges() did NOT produce the expected number of edges.")
             status.append(False)
-            
         if check_uniqueness(edges):
-            print('The function create_edges() produced unique edges.\n')
+            print('The function create_edges() produced unique edges.')
             status.append(True)
-            
         else:
-            print('The function create_edges() did NOT produce unique edges.\n')
+            print('The function create_edges() did NOT produce unique edges.')
             status.append(False)
             
         print(f"Time elapsed: {t3} s.\n")
@@ -2160,43 +2216,38 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
         faces, faces_slip = create_faces(cells1D = edges,
                                           structure = struc,
                                           size = size,
+                                          cells0D = nodes,
                                           special0D = special0D,
                                           multiprocess = multiprocess)
-        
         t4 = time.time() - t0
         
         if len(faces) == nr_faces(size, struc):
-            print("The function create_faces() produced the expected number of faces.\n")
+            print("\nThe function create_faces() produced the expected number of faces.")
             status.append(True)
-            
         elif len(faces) != nr_faces(size, struc):
-            print("The function create_faces() did NOT produce the expected number of faces.\n")
+            print("\nThe function create_faces() did NOT produce the expected number of faces.")
             status.append(False)
             
         if check_uniqueness(faces):
-            print('The function create_faces() produced unique faces.\n')
+            print('The function create_faces() produced unique faces.')
             status.append(True)
-            
         else:
-            print('The function create_faces() did NOT produce unique faces.\n')
+            print('The function create_faces() did NOT produce unique faces.')
             status.append(False)
             
         if len(faces_slip) == nr_faces_slip(size, struc):
-            print("The function create_faces() produced the expected number of slip faces.\n")
+            print("The function create_faces() produced the expected number of slip faces.")
             status.append(True)
-            
         elif len(faces_slip) != nr_faces_slip(size, struc):
-            print("The function create_faces() did NOT produce the expected number of slip faces.\n")
+            print("The function create_faces() did NOT produce the expected number of slip faces.")
             status.append(False)
             
         if check_uniqueness(faces_slip):
-            print('The function create_faces() produced unique slip faces.\n')
+            print('The function create_faces() produced unique slip faces.')
             status.append(True)
-            
         else:
-            print('The function create_faces() did NOT produce unique slip faces.\n')
+            print('The function create_faces() did NOT produce unique slip faces.')
             status.append(False)
-
             
         print(f"Time elapsed: {t4} s.\n")
         
@@ -2215,28 +2266,25 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
         t5 = time.time() - t0
         
         if len(volumes) == nr_volumes(size, struc):
-            print("The function create_volumes() produced the expected number of volumes.\n")
+            print("\nThe function create_volumes() produced the expected number of volumes.")
             status.append(True)
-            
         elif len(volumes) != nr_volumes(size, struc):
-            print("The function create_volumes() did NOT produce the expected number of volumes.\n")
+            print("\nThe function create_volumes() did NOT produce the expected number of volumes.")
             status.append(False)
             
         if check_uniqueness(volumes):
-            print('The function create_volumes() produced unique volumes.\n')
+            print('The function create_volumes() produced unique volumes.')
             status.append(True)
-            
         else:
-            print('The function create_volumes() did NOT produce unique volumes.\n')
+            print('The function create_volumes() did NOT produce unique volumes.')
             status.append(False)
             
         print(f"Time elapsed: {t5} s.\n")
         
         if np.all(status):
             print("-> SUCCESS!\n")
-            
         else:
-            print("-> FAILURE!")
+            print("-> FAILURE!\n")
         
         del t0
 
@@ -2252,24 +2300,24 @@ nodes, edges, faces, faces_slip, volumes = build.build_complex(struc, size, mult
 
 
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
     
-#     struc = 'fcc'
-#     size = [13,13,13]
-#     lattice = np.array([[1,0,0], [0,1,0], [0,0,1]])
-#     origin = np.array([0,0,0])
-#     multi = True
+    struc = 'fcc'
+    size = [2,2,2]
+    lattice = np.array([[1,0,0], [0,1,0], [0,0,1]])
+    origin = np.array([0.5,0.5,0.5])
+    multi = False
         
-#     nodes, edges, faces, faces_slip, volumes = build_complex(struc, size, lattice, origin, multiprocess = multi)
+    # nodes, edges, faces, faces_slip, volumes = build_complex(struc, size, lattice, origin, multiprocess = multi)
     
-#     nr_cells = [nr_nodes(size, struc), nr_edges(size, struc), nr_faces(size, struc), nr_volumes(size, struc)]
+    # nr_cells = [nr_nodes(size, struc), nr_edges(size, struc), nr_faces(size, struc), nr_volumes(size, struc)]
     
-#     from iofiles import write_to_file
+    # from iofiles import write_to_file
     
-#     write_to_file(nodes, 'nodes',
-#                   edges, 'edges',
-#                   faces, 'faces',
-#                   faces_slip, 'faces_slip',
-#                   volumes, 'volumes',
-#                   nr_cells, 'nr_cells',
-#                   new_folder = True)
+    # write_to_file(nodes, 'nodes',
+    #               edges, 'edges',
+    #               faces, 'faces',
+    #               faces_slip, 'faces_slip',
+    #               volumes, 'volumes',
+    #               nr_cells, 'nr_cells',
+    #               new_folder = True)

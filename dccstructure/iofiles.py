@@ -2,9 +2,9 @@
 """
 Created on Tue Oct 25 2022
 
-Last edited on: Mar 13 17:40 2024
+Last edited on: Mar 28 15:40 2024
 
-Author: Afonso Barroso, 9986055, The University of Manchester
+Author: Afonso Barroso, The University of Manchester
 
 This module is part of the DCC_Structure package. In here you will find a useful function for writing several variables onto .txt
 files in one go.
@@ -110,7 +110,7 @@ def import_complex_data(data_folder: Path):
     -------
     tuple
         Extracts information about the complex from the data files in data_folder.
-        Order: nodes, edges, faces, faces_slip, faces_areas, faces_normals, volumes, nr_cells, A0, A1, A2, A3, B1, B2, B3
+        Order: nodes, edges, faces, faces_slip, faces_areas, faces_normals, volumes, volumes_vols, nr_cells, A0, A1, A2, A3, B1, B2, B3
     """
     
     # Import cell complex data files
@@ -144,7 +144,7 @@ def import_complex_data(data_folder: Path):
 
     if (data_folder / 'faces_normals.txt'):
         with open(data_folder / 'faces_normals.txt') as file:
-            faces_normals = list(np.genfromtxt(file, delimiter = ' '))
+            faces_normals = np.genfromtxt(file, delimiter = ' ')
         data.append(faces_normals)
         
     if (data_folder / 'volumes.txt').is_file():
