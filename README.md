@@ -11,22 +11,22 @@ The script **run.py** is a summarised execution of the whole package. It takes t
 Mandatory:
 
     --size int int int : specifies the number of unit cells in the directions x, y, z (default is 1 1 1);
-    --struc str : specifies the crystallographic structure of the complex;
+    --struc str : specifies the crystallographic structure of the complex. Options: ['fcc', 'bcc'];
 
 Optional:
 
     --dim int : specifies the dimension of the complex (default is 3);
     --basisv flt flt flt flt flt flt flt flt flt : specifies the 9 components of the 3 lattice basis vectors;
-    --mp : if passed, the code will run with Python's multiprocessing package, i.e. paralellisation of operations. This will not work if all of the complex dimensions (as passed to --size) are smaller than the number of available CPUs;
-    -d : if passed, the code will output the node degrees;
-    -n : if passed, the code will output the unit normals to the 2-cells;
-    -a : if passed, the code will output the areas of the 2-cells;
-    -v : if passed, the code will output the volumes of the 3-cells;
-    -s : if passed, the code will output the indices of 2-cells corresponding to slip planes.
+    --mp bool : if passed, the code will run with Python's multiprocessing package, i.e. paralellisation of operations. This will not work if all of the complex dimensions (as passed to --size) are smaller than the number of available CPUs;
+    -d bool : if passed, the code will output the node degrees;
+    -n bool : if passed, the code will output the unit normals to the 2-cells;
+    -a bool : if passed, the code will output the areas of the 2-cells;
+    -v bool : if passed, the code will output the volumes of the 3-cells;
+    -s bool : if passed, the code will output the indices of 2-cells corresponding to slip planes.
         
-This module is meant to be run from a command line/terminal in the dccstructure directory (*i.e.* inside the dccstructure folder). It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex with the parameters specified by the arguments above. It returns the adjacency and incidence matrices of the complex, as well as other topological and geometrical information (optional arguments). This file can be run from a terminal with the following command (ignore the + sign at the start and remove the angular brackets):
+This module is meant to be run from a command line/terminal that contains the dccstructure directory (*i.e.* one level above the dccstructure folder). It executes the whole package from scratch as intended, building a discrete (simplicial) cell complex with the parameters specified by the arguments above. It returns the adjacency and incidence matrices of the complex, as well as other topological and geometrical information (optional arguments). This file can be run from a terminal with the following command (ignore the + sign at the start and remove the angular brackets):
 ```diff
-+    python run.py --size <int int int> --basisv <flt flt flt flt flt flt flt flt flt> --mp (+ optional arguments)
++    python -m dccstructure --size <int int int> --basisv <flt flt flt flt flt flt flt flt flt> --struc <str> (+ optional arguments)
 ```
 
 ### build.py
@@ -70,9 +70,9 @@ This module contains functions that take the data from a PCC, previously built u
 
 ### cochain.py
 
-This module defines the *Cochain* class as a subclass of the *CellComplex* class defined in the **base.py** module in *PRISBteam/Voronoi_PCC_Analyser/matgen*. The *Cochain* class contains a dictionary that assigns values (integer, floating-point or array-like) to the cells of a cell complex. It is furnished with several methods, including the dunder methods +, -, *, == and len. Other methods include the cup product and the inner product of cochains, and the star operator, all defined to reproduce the theory of Berbatov et al. (2022) and Berbatov (Thesis) (2023).
+This module defines the *Cochain* class as a subclass of the *CellComplex* class defined in the **base.py** module in *PRISBteam/Voronoi_PCC_Analyser/matgen*. The *Cochain* class contains a dictionary that assigns values (integer, floating-point or array-like) to the cells of a cell complex. It is furnished with several methods, including the dunder methods +, -, *, == and len. Other methods include the cup product and the inner product of cochains, all defined to reproduce the theory of Berbatov et al. (2022) and Berbatov (Thesis) (2023).
 
-### metrohast_vector.py
+### metrohast_sum.py
 
 This module defines the *MHalgorithm* class used to compute the energy minimisation of a system of plastic slips in an FCC complex, using the data output by **dccstructure** and restructured by **cellcomplex.py**. Using the *Cochain* class defined in **cochain.py**, slips are mathematically defined as vector-valued 2-cochains.
 
