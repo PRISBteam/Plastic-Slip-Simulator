@@ -14,7 +14,7 @@ import math
 from pathlib import Path
 from tqdm import tqdm
 
-sys.path.append('../../Voronoi_PCC_Analyser/') ; sys.path.append('../../') ; sys.path.append('../') ; sys.path.append('../../dccstructure')
+sys.path.append('../Voronoi_PCC_Analyser/') ; sys.path.append('../') ; sys.path.append('./') ; sys.path.append('../dccstructure')
 from matgen.base import CellComplex, Face3D, Edge3D
 from dccstructure.iofiles import import_complex_data
 from cellcomplex import createAllCells, scaleAllCells, createCellComplex
