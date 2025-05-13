@@ -3,7 +3,7 @@
 """
 Created on Fri Mar 29 18:28:57 2024
 
-Last edited on: May 08 13:07 2025
+Last edited on: May 13 15:43 2025
 
 Author: Afonso Barroso, The University of Manchester
 """
@@ -15,11 +15,9 @@ import numpy as np
 from math import factorial
 from collections import defaultdict
 import sys
-sys.path.append('/Users/user/Library/CloudStorage/OneDrive-TheUniversityofManchester/PhD Compendium/Projects/Plastic_Slip_Naimark/NaimarkMH')
-sys.path.append('/Users/user/Library/CloudStorage/OneDrive-TheUniversityofManchester/PhD Compendium/Projects/Plastic_Slip_Naimark/Voronoi_PCC_Analyser')
-sys.path.append('/Users/user/Library/CloudStorage/OneDrive-TheUniversityofManchester/PhD Compendium/Projects/Plastic_Slip_Naimark/FormanNaimark/formanaimark')
+sys.path.append('./')
+sys.path.append('../Voronoi_PCC_Analyser')
 from matgen.base import Vertex3D, Edge3D, Face3D, Poly, CellComplex
-from Forman_from_tess import rel_orientation
 from functools import lru_cache
 
 
@@ -872,6 +870,10 @@ class Cochain():
 
 
 # ----- # ----- #  FUNCTIONS # ----- # ----- #
+
+def rel_orientation(pcell: LowerOrderCell, pplus1cell: Cell) -> int:
+    place = np.argwhere(np.abs(pcell.signed_incident_ids) == pplus1cell.id)[0,0]
+    return int(pcell.signed_incident_ids[place] / pplus1cell.id)
 
 def cell_orthogonality_3D(c1, c2) -> str:
     """
